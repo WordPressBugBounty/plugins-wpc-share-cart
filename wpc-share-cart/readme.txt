@@ -3,9 +3,9 @@ Contributors: wpclever
 Donate link: https://wpclever.net
 Tags: woocommerce, wpc, share cart, cart link
 Requires at least: 4.0
-Tested up to: 6.6
-Version: 2.1.0
-Stable tag: 2.1.0
+Tested up to: 6.7
+Version: 2.1.1
+Stable tag: 2.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -65,6 +65,9 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 4. Go to WP-admin > WPClever > Share Cart to configure
 
 == Changelog ==
+
+= 2.1.1 =
+* Added: Shortcode [wpcss_btn]
 
 = 2.1.0 =
 * Updated: Use WC_AJAX for frontend

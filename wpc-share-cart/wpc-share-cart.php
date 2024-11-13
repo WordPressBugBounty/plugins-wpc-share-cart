@@ -3,21 +3,21 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.0
+Version: 2.1.1
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
 Domain Path: /languages/
 Requires Plugins: woocommerce
 Requires at least: 4.0
-Tested up to: 6.6
+Tested up to: 6.7
 WC requires at least: 3.0
-WC tested up to: 9.1
+WC tested up to: 9.4
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.0' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.1' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -130,7 +130,9 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 					}
 
 					// shortcode
+					add_shortcode( 'wpcss_btn', [ $this, 'shortcode_btn' ] );
 					add_shortcode( 'wpcss_list', [ $this, 'shortcode_list' ] );
+					add_shortcode( 'wpcss_cart', [ $this, 'shortcode_list' ] );
 				}
 
 				public static function get_settings() {
@@ -248,6 +250,22 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 					}
 
 					return apply_filters( 'wpcss_share_links', $share_links, $url );
+				}
+
+				function shortcode_btn( $attrs ) {
+					if ( ! isset( WC()->cart ) ) {
+						return '';
+					}
+
+					$attrs = shortcode_atts( [
+						'text'    => self::localization( 'button', esc_html__( 'Share cart', 'wpc-share-cart' ) ),
+						'class'   => 'button',
+						'context' => ''
+					], $attrs );
+
+					$btn = '<button class="' . esc_attr( 'wpcss-btn ' . $attrs['class'] ) . '" data-hash="' . esc_attr( WC()->cart->get_cart_hash() ) . '">' . esc_html( $attrs['text'] ) . '</button>';
+
+					return apply_filters( 'wpcss_shortcode_btn', $btn, $attrs );
 				}
 
 				function shortcode_list( $attrs ) {
@@ -960,7 +978,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 				}
 
 				function share_button() {
-					echo '<button class="button wpcss-btn" data-hash="' . wc()->cart->get_cart_hash() . '">' . self::localization( 'button', esc_html__( 'Share cart', 'wpc-share-cart' ) ) . '</button>';
+					echo do_shortcode( '[wpcss_btn]' );
 				}
 
 				function ajax_share() {

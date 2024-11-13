@@ -2,14 +2,14 @@
 # This file is distributed under the same license as the WPC Share Cart for WooCommerce plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: WPC Share Cart for WooCommerce 2.1.0\n"
+"Project-Id-Version: WPC Share Cart for WooCommerce 2.1.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wpc-share-cart\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-08-21T02:33:28+00:00\n"
+"POT-Creation-Date: 2024-11-13T04:58:20+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.5.0\n"
 "X-Domain: wpc-share-cart\n"
@@ -38,342 +38,342 @@ msgstr ""
 msgid "Share Cart"
 msgstr ""
 
-#: wpc-share-cart.php:228
-#: wpc-share-cart.php:583
+#: wpc-share-cart.php:230
+#: wpc-share-cart.php:601
 msgid "Facebook"
 msgstr ""
 
-#: wpc-share-cart.php:229
-#: wpc-share-cart.php:584
+#: wpc-share-cart.php:231
+#: wpc-share-cart.php:602
 msgid "Twitter"
 msgstr ""
 
-#: wpc-share-cart.php:230
-#: wpc-share-cart.php:585
+#: wpc-share-cart.php:232
+#: wpc-share-cart.php:603
 msgid "Pinterest"
 msgstr ""
 
-#: wpc-share-cart.php:231
-#: wpc-share-cart.php:586
+#: wpc-share-cart.php:233
+#: wpc-share-cart.php:604
 msgid "Mail"
 msgstr ""
 
-#: wpc-share-cart.php:241
-#: wpc-share-cart.php:646
+#: wpc-share-cart.php:243
+#: wpc-share-cart.php:664
 msgid "Share on:"
 msgstr ""
 
-#: wpc-share-cart.php:292
-#: wpc-share-cart.php:327
-#: wpc-share-cart.php:704
-#: wpc-share-cart.php:707
+#: wpc-share-cart.php:261
+#: wpc-share-cart.php:648
+msgid "Share cart"
+msgstr ""
+
+#: wpc-share-cart.php:310
+#: wpc-share-cart.php:345
+#: wpc-share-cart.php:722
+#: wpc-share-cart.php:725
 msgid "Product"
 msgstr ""
 
-#: wpc-share-cart.php:293
-#: wpc-share-cart.php:352
-#: wpc-share-cart.php:712
-#: wpc-share-cart.php:715
+#: wpc-share-cart.php:311
+#: wpc-share-cart.php:370
+#: wpc-share-cart.php:730
+#: wpc-share-cart.php:733
 msgid "Price"
 msgstr ""
 
-#: wpc-share-cart.php:294
-#: wpc-share-cart.php:355
-#: wpc-share-cart.php:720
-#: wpc-share-cart.php:723
+#: wpc-share-cart.php:312
+#: wpc-share-cart.php:373
+#: wpc-share-cart.php:738
+#: wpc-share-cart.php:741
 msgid "Quantity"
 msgstr ""
 
-#: wpc-share-cart.php:295
-#: wpc-share-cart.php:358
-#: wpc-share-cart.php:728
-#: wpc-share-cart.php:731
+#: wpc-share-cart.php:313
+#: wpc-share-cart.php:376
+#: wpc-share-cart.php:746
+#: wpc-share-cart.php:749
 msgid "Subtotal"
 msgstr ""
 
-#: wpc-share-cart.php:343
+#: wpc-share-cart.php:361
 msgid "Available on backorder"
 msgstr ""
 
-#: wpc-share-cart.php:348
+#: wpc-share-cart.php:366
 msgid "Note: "
 msgstr ""
 
-#: wpc-share-cart.php:376
-#: wpc-share-cart.php:679
+#: wpc-share-cart.php:394
+#: wpc-share-cart.php:697
 msgid "Add selected products to cart"
 msgstr ""
 
-#: wpc-share-cart.php:380
-#: wpc-share-cart.php:540
-#: wpc-share-cart.php:684
-#: wpc-share-cart.php:687
+#: wpc-share-cart.php:398
+#: wpc-share-cart.php:558
+#: wpc-share-cart.php:702
+#: wpc-share-cart.php:705
 msgid "Restore cart"
 msgstr ""
 
-#: wpc-share-cart.php:395
-#: wpc-share-cart.php:654
+#: wpc-share-cart.php:413
+#: wpc-share-cart.php:672
 msgid "Share link:"
 msgstr ""
 
-#: wpc-share-cart.php:397
-#: wpc-share-cart.php:662
+#: wpc-share-cart.php:415
+#: wpc-share-cart.php:680
 msgid "Copy"
 msgstr ""
 
-#: wpc-share-cart.php:425
+#: wpc-share-cart.php:443
 msgid "Shared Cart"
 msgstr ""
 
-#: wpc-share-cart.php:449
+#: wpc-share-cart.php:467
 msgid "Premium"
 msgstr ""
 
 #. translators: stars
-#: wpc-share-cart.php:452
+#: wpc-share-cart.php:470
 msgid "Thank you for using our plugin! If you are satisfied, please reward it a full five-star %s rating."
 msgstr ""
 
-#: wpc-share-cart.php:454
+#: wpc-share-cart.php:472
 msgid "Reviews"
 msgstr ""
 
-#: wpc-share-cart.php:455
+#: wpc-share-cart.php:473
 msgid "Changelog"
 msgstr ""
 
-#: wpc-share-cart.php:456
+#: wpc-share-cart.php:474
 msgid "Discussion"
 msgstr ""
 
-#: wpc-share-cart.php:461
+#: wpc-share-cart.php:479
 msgid "Settings updated."
 msgstr ""
 
-#: wpc-share-cart.php:467
-#: wpc-share-cart.php:935
+#: wpc-share-cart.php:485
+#: wpc-share-cart.php:953
 msgid "Settings"
 msgstr ""
 
-#: wpc-share-cart.php:470
+#: wpc-share-cart.php:488
 msgid "Localization"
 msgstr ""
 
-#: wpc-share-cart.php:473
-#: wpc-share-cart.php:936
+#: wpc-share-cart.php:491
+#: wpc-share-cart.php:954
 msgid "Shared Carts"
 msgstr ""
 
-#: wpc-share-cart.php:476
-#: wpc-share-cart.php:937
+#: wpc-share-cart.php:494
+#: wpc-share-cart.php:955
 msgid "Premium Version"
 msgstr ""
 
-#: wpc-share-cart.php:479
+#: wpc-share-cart.php:497
 msgid "Essential Kit"
 msgstr ""
 
-#: wpc-share-cart.php:503
-#: wpc-share-cart.php:621
+#: wpc-share-cart.php:521
+#: wpc-share-cart.php:639
 msgid "General"
 msgstr ""
 
-#: wpc-share-cart.php:507
+#: wpc-share-cart.php:525
 msgid "Share page"
 msgstr ""
 
-#: wpc-share-cart.php:512
+#: wpc-share-cart.php:530
 msgid "Choose a page"
 msgstr ""
 
 #. translators: shortcode
-#: wpc-share-cart.php:515
+#: wpc-share-cart.php:533
 msgid "Add shortcode %s to display the cart contents on a page."
 msgstr ""
 
-#: wpc-share-cart.php:519
+#: wpc-share-cart.php:537
 msgid "Link to individual product"
 msgstr ""
 
-#: wpc-share-cart.php:522
+#: wpc-share-cart.php:540
 msgid "Yes, open in the same tab"
 msgstr ""
 
-#: wpc-share-cart.php:523
+#: wpc-share-cart.php:541
 msgid "Yes, open in the new tab"
 msgstr ""
 
-#: wpc-share-cart.php:524
+#: wpc-share-cart.php:542
 msgid "Yes, open quick view popup"
 msgstr ""
 
-#: wpc-share-cart.php:525
-#: wpc-share-cart.php:534
-#: wpc-share-cart.php:544
-#: wpc-share-cart.php:554
-#: wpc-share-cart.php:564
-#: wpc-share-cart.php:574
-#: wpc-share-cart.php:595
-#: wpc-share-cart.php:605
+#: wpc-share-cart.php:543
+#: wpc-share-cart.php:552
+#: wpc-share-cart.php:562
+#: wpc-share-cart.php:572
+#: wpc-share-cart.php:582
+#: wpc-share-cart.php:592
+#: wpc-share-cart.php:613
+#: wpc-share-cart.php:623
 msgid "No"
 msgstr ""
 
-#: wpc-share-cart.php:530
+#: wpc-share-cart.php:548
 msgid "Add selected products"
 msgstr ""
 
-#: wpc-share-cart.php:533
-#: wpc-share-cart.php:543
-#: wpc-share-cart.php:553
-#: wpc-share-cart.php:563
-#: wpc-share-cart.php:573
-#: wpc-share-cart.php:594
-#: wpc-share-cart.php:604
+#: wpc-share-cart.php:551
+#: wpc-share-cart.php:561
+#: wpc-share-cart.php:571
+#: wpc-share-cart.php:581
+#: wpc-share-cart.php:591
+#: wpc-share-cart.php:612
+#: wpc-share-cart.php:622
 msgid "Yes"
 msgstr ""
 
-#: wpc-share-cart.php:536
+#: wpc-share-cart.php:554
 msgid "Enable \"Add selected products\" buttons?"
 msgstr ""
 
-#: wpc-share-cart.php:546
+#: wpc-share-cart.php:564
 msgid "Enable \"Restore cart\" buttons?"
 msgstr ""
 
-#: wpc-share-cart.php:550
+#: wpc-share-cart.php:568
 msgid "Keep product data"
 msgstr ""
 
-#: wpc-share-cart.php:556
+#: wpc-share-cart.php:574
 msgid "Keep the product data at the sharing moment. If not, when adding selected products or restoring the cart, products will be added to the cart with the current data."
 msgstr ""
 
-#: wpc-share-cart.php:560
+#: wpc-share-cart.php:578
 msgid "Redirect"
 msgstr ""
 
-#: wpc-share-cart.php:566
+#: wpc-share-cart.php:584
 msgid "Redirect to the cart page after adding products?"
 msgstr ""
 
-#: wpc-share-cart.php:570
+#: wpc-share-cart.php:588
 msgid "Share buttons"
 msgstr ""
 
-#: wpc-share-cart.php:576
+#: wpc-share-cart.php:594
 msgid "Enable share buttons?"
 msgstr ""
 
-#: wpc-share-cart.php:580
+#: wpc-share-cart.php:598
 msgid "Share links"
 msgstr ""
 
-#: wpc-share-cart.php:591
+#: wpc-share-cart.php:609
 msgid "Use icon"
 msgstr ""
 
-#: wpc-share-cart.php:597
+#: wpc-share-cart.php:615
 msgid "Use icon for share link?"
 msgstr ""
 
-#: wpc-share-cart.php:601
+#: wpc-share-cart.php:619
 msgid "Copy link"
 msgstr ""
 
-#: wpc-share-cart.php:607
+#: wpc-share-cart.php:625
 msgid "Enable copy link to share?"
 msgstr ""
 
-#: wpc-share-cart.php:623
+#: wpc-share-cart.php:641
 msgid "Leave blank to use the default text and its equivalent translation in multiple languages."
 msgstr ""
 
-#: wpc-share-cart.php:627
+#: wpc-share-cart.php:645
 msgid "Button text"
 msgstr ""
 
-#: wpc-share-cart.php:630
-#: wpc-share-cart.php:963
-msgid "Share cart"
-msgstr ""
-
-#: wpc-share-cart.php:635
+#: wpc-share-cart.php:653
 msgid "Message"
 msgstr ""
 
-#: wpc-share-cart.php:638
-#: wpc-share-cart.php:997
+#: wpc-share-cart.php:656
+#: wpc-share-cart.php:1015
 msgid "Share link was generated! Now you can copy below link to share."
 msgstr ""
 
-#: wpc-share-cart.php:643
+#: wpc-share-cart.php:661
 msgid "Share on"
 msgstr ""
 
-#: wpc-share-cart.php:651
+#: wpc-share-cart.php:669
 msgid "Share link"
 msgstr ""
 
-#: wpc-share-cart.php:659
+#: wpc-share-cart.php:677
 msgid "Copy button"
 msgstr ""
 
-#: wpc-share-cart.php:667
+#: wpc-share-cart.php:685
 msgid "Copy message"
 msgstr ""
 
 #. translators: link
-#: wpc-share-cart.php:671
-#: wpc-share-cart.php:922
+#: wpc-share-cart.php:689
+#: wpc-share-cart.php:940
 msgid "Share link %s was copied to clipboard!"
 msgstr ""
 
-#: wpc-share-cart.php:676
+#: wpc-share-cart.php:694
 msgid "Add selected"
 msgstr ""
 
-#: wpc-share-cart.php:692
+#: wpc-share-cart.php:710
 msgid "Note"
 msgstr ""
 
-#: wpc-share-cart.php:695
+#: wpc-share-cart.php:713
 msgid "Note:"
 msgstr ""
 
-#: wpc-share-cart.php:700
+#: wpc-share-cart.php:718
 msgid "Columns"
 msgstr ""
 
-#: wpc-share-cart.php:774
+#: wpc-share-cart.php:792
 msgid "Search"
 msgstr ""
 
 #. translators: counter
-#: wpc-share-cart.php:779
-#: wpc-share-cart.php:856
+#: wpc-share-cart.php:797
+#: wpc-share-cart.php:874
 msgid "%1$d carts in %2$d pages"
 msgstr ""
 
-#: wpc-share-cart.php:797
-#: wpc-share-cart.php:836
+#: wpc-share-cart.php:815
+#: wpc-share-cart.php:854
 msgid "Key"
 msgstr ""
 
-#: wpc-share-cart.php:800
-#: wpc-share-cart.php:839
+#: wpc-share-cart.php:818
+#: wpc-share-cart.php:857
 msgid "Customer"
 msgstr ""
 
-#: wpc-share-cart.php:803
-#: wpc-share-cart.php:842
+#: wpc-share-cart.php:821
+#: wpc-share-cart.php:860
 msgid "Time"
 msgstr ""
 
-#: wpc-share-cart.php:806
-#: wpc-share-cart.php:845
+#: wpc-share-cart.php:824
+#: wpc-share-cart.php:863
 msgid "Actions"
 msgstr ""
 
-#: wpc-share-cart.php:953
+#: wpc-share-cart.php:971
 msgid "Community support"
 msgstr ""
