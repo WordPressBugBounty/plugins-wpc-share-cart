@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.1
+Version: 2.1.2
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,12 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.7
 WC requires at least: 3.0
-WC tested up to: 9.4
+WC tested up to: 9.5
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.1' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.2' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -36,9 +38,6 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 	add_action( 'plugins_loaded', 'wpcss_init', 11 );
 
 	function wpcss_init() {
-		// load text-domain
-		load_plugin_textdomain( 'wpc-share-cart', false, basename( __DIR__ ) . '/languages/' );
-
 		if ( ! function_exists( 'WC' ) || ! version_compare( WC()->version, '3.0', '>=' ) ) {
 			add_action( 'admin_notices', 'wpcss_notice_wc' );
 
@@ -78,7 +77,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 					add_action( 'admin_footer', [ $this, 'admin_footer' ] );
 
 					// frontend scripts
-					add_action( 'wp_enqueue_scripts', [ $this, 'wp_enqueue_scripts' ] );
+					add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
 					// link
 					add_filter( 'plugin_action_links', [ $this, 'action_links' ], 10, 2 );
@@ -101,6 +100,9 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 				}
 
 				function init() {
+					// load text-domain
+					load_plugin_textdomain( 'wpc-share-cart', false, basename( WPCSS_DIR ) . '/languages/' );
+
 					// add page
 					$wpcss_page = get_page_by_path( 'share-cart', OBJECT );
 
@@ -927,7 +929,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 					<?php
 				}
 
-				function wp_enqueue_scripts() {
+				function enqueue_scripts() {
 					// feather icons
 					wp_enqueue_style( 'wpcss-feather', WPCSS_URI . 'assets/libs/feather/feather.css' );
 
