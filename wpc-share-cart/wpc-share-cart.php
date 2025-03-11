@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.2
+Version: 2.1.3
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.7
 WC requires at least: 3.0
-WC tested up to: 9.5
+WC tested up to: 9.7
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.2' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.3' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -164,64 +164,82 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 				}
 
 				function add_products() {
-					if ( isset( $_POST['wpcss-action'], $_POST['wpcss-key'], $_POST['wpcss-security'] ) ) {
-						if ( ! wp_verify_nonce( sanitize_key( $_POST['wpcss-security'] ), 'wpcss_add_products' ) ) {
-							print 'Permissions check failed.';
-							exit;
+					// Early return if required POST parameters are missing
+					if ( ! isset( $_POST['wpcss-action'], $_POST['wpcss-key'], $_POST['wpcss-security'] ) ) {
+						return;
+					}
+
+					// Cache frequently accessed values
+					$security = sanitize_key( $_POST['wpcss-security'] );
+					if ( ! wp_verify_nonce( $security, 'wpcss_add_products' ) ) {
+						wp_die( 'Permissions check failed.' );
+					}
+
+					// Cache settings to avoid multiple database calls
+					$keep_data = self::get_setting( 'keep_data', 'yes' ) === 'yes';
+					$cart_key  = 'cart_' . sanitize_key( $_POST['wpcss-key'] );
+
+					// Get saved cart data
+					$saved_cart = self::get_setting( $cart_key );
+
+					if ( empty( $saved_cart['cart'] ) ) {
+						return;
+					}
+
+					$saved_cart_items = $saved_cart['cart'];
+					$action           = sanitize_key( $_POST['wpcss-action'] );
+					$wc_cart          = WC()->cart;
+
+					// Prepare cart items based on action
+					$items_to_process = [];
+
+					if ( $action === 'selected' ) {
+						if ( empty( $_POST['wpcss-products'] ) ) {
+							return;
 						}
 
-						$action           = sanitize_key( $_POST['wpcss-action'] );
-						$saved_cart       = self::get_setting( 'cart_' . sanitize_key( $_POST['wpcss-key'] ) );
-						$saved_cart_items = $saved_cart['cart'];
+						$selected_products = self::sanitize_array( $_POST['wpcss-products'] );
+						// Filter only existing products
+						$items_to_process = array_intersect_key(
+							$saved_cart_items,
+							array_flip( $selected_products )
+						);
+					} elseif ( $action === 'all' ) {
+						$wc_cart->empty_cart();
+						$items_to_process = $saved_cart_items;
+					}
 
-						switch ( $action ) {
-							case 'selected':
-								$selected_products = isset( $_POST['wpcss-products'] ) ? self::sanitize_array( $_POST['wpcss-products'] ) : [];
+					if ( empty( $items_to_process ) ) {
+						return;
+					}
 
-								if ( ! empty( $selected_products ) && ! empty( $saved_cart_items ) ) {
-									foreach ( $selected_products as $selected_product ) {
-										if ( isset( $saved_cart_items[ $selected_product ] ) ) {
-											$cart_item = $saved_cart_items[ $selected_product ];
+					// Batch process cart items
+					$cart_items = array_filter( $items_to_process, function ( $item ) {
+						return ! self::is_special_cart_item( $item );
+					} );
 
-											if ( self::is_special_cart_item( $cart_item ) ) {
-												// don't add these special products
-												continue;
-											}
+					// Add items to cart in batch
+					foreach ( $cart_items as $cart_item ) {
+						$args = [
+							$cart_item['product_id'],
+							$cart_item['quantity'],
+							$cart_item['variation_id'],
+							$cart_item['variation']
+						];
 
-											if ( self::get_setting( 'keep_data', 'yes' ) === 'yes' ) {
-												// TODO: Maybe need to clean $cart_item - remove key 'wpcss_price' and 'wpcss_subtotal'
-												WC()->cart->add_to_cart( $cart_item['product_id'], $cart_item['quantity'], $cart_item['variation_id'], $cart_item['variation'], $cart_item );
-											} else {
-												WC()->cart->add_to_cart( $cart_item['product_id'], $cart_item['quantity'], $cart_item['variation_id'], $cart_item['variation'] );
-											}
-										}
-									}
-								}
-
-								break;
-							case 'all':
-								// empty cart first
-								WC()->cart->empty_cart();
-
-								foreach ( $saved_cart_items as $cart_item ) {
-									if ( self::is_special_cart_item( $cart_item ) ) {
-										// don't add these special products
-										continue;
-									}
-
-									if ( self::get_setting( 'keep_data', 'yes' ) === 'yes' ) {
-										WC()->cart->add_to_cart( $cart_item['product_id'], $cart_item['quantity'], $cart_item['variation_id'], $cart_item['variation'], $cart_item );
-									} else {
-										WC()->cart->add_to_cart( $cart_item['product_id'], $cart_item['quantity'], $cart_item['variation_id'], $cart_item['variation'] );
-									}
-								}
-
-								break;
+						if ( $keep_data ) {
+							// Remove unnecessary data if keep_data is enabled
+							unset( $cart_item['wpcss_price'], $cart_item['wpcss_subtotal'] );
+							$args[] = $cart_item;
 						}
 
-						if ( self::get_setting( 'redirect', 'yes' ) === 'yes' ) {
-							wp_redirect( wc_get_cart_url() );
-						}
+						$wc_cart->add_to_cart( ...$args );
+					}
+
+					// Handle redirect if needed
+					if ( self::get_setting( 'redirect', 'yes' ) === 'yes' ) {
+						wp_safe_redirect( wc_get_cart_url() );
+						exit;
 					}
 				}
 
@@ -344,7 +362,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 												}
 												?>
                                             </td>
-                                            <td class="product-name" data-title="<?php esc_attr_e( 'Product', 'wpc-share-cart' ); ?>">
+                                            <td class="product-name"
+                                                data-title="<?php esc_attr_e( 'Product', 'wpc-share-cart' ); ?>">
 												<?php
 												if ( ! $product_permalink || $link === 'no' ) {
 													echo wp_kses_post( apply_filters( 'wpcss_cart_item_name', apply_filters( 'woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key ), $cart_item, $cart_item_key ) . '&nbsp;' );
@@ -369,13 +388,16 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 												}
 												?>
                                             </td>
-                                            <td class="product-price" data-title="<?php esc_attr_e( 'Price', 'wpc-share-cart' ); ?>">
+                                            <td class="product-price"
+                                                data-title="<?php esc_attr_e( 'Price', 'wpc-share-cart' ); ?>">
 												<?php echo apply_filters( 'wpcss_cart_item_price', ( ! empty( $cart_item['wpcss_price'] ) ? wc_price( $cart_item['wpcss_price'] ) : apply_filters( 'woocommerce_cart_item_price', WC()->cart->get_product_price( $_product ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
                                             </td>
-                                            <td class="product-quantity" data-title="<?php esc_attr_e( 'Quantity', 'wpc-share-cart' ); ?>">
+                                            <td class="product-quantity"
+                                                data-title="<?php esc_attr_e( 'Quantity', 'wpc-share-cart' ); ?>">
 												<?php echo apply_filters( 'wpcss_cart_item_quantity', $cart_item['quantity'], $cart_item, $cart_item_key ); ?>
                                             </td>
-                                            <td class="product-subtotal" data-title="<?php esc_attr_e( 'Subtotal', 'wpc-share-cart' ); ?>">
+                                            <td class="product-subtotal"
+                                                data-title="<?php esc_attr_e( 'Subtotal', 'wpc-share-cart' ); ?>">
 												<?php echo apply_filters( 'wpcss_cart_item_subtotal', ( ! empty( $cart_item['wpcss_subtotal'] ) ? wc_price( $cart_item['wpcss_subtotal'] ) : apply_filters( 'woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal( $_product, $cart_item['quantity'] ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
                                             </td>
                                         </tr>
@@ -391,13 +413,17 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                     <td colspan="5">
                                         <div class="wpcss-actions">
 											<?php wp_nonce_field( 'wpcss_add_products', 'wpcss-security' ); ?>
-                                            <input type="hidden" name="wpcss-key" value="<?php echo esc_attr( $key ); ?>"/>
+                                            <input type="hidden" name="wpcss-key"
+                                                   value="<?php echo esc_attr( $key ); ?>"/>
 											<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
-                                                <button type="submit" class="button wpcss-add-selected" name="wpcss-action" value="selected"><?php echo self::localization( 'selected', esc_html__( 'Add selected products to cart', 'wpc-share-cart' ) ); ?></button>
+                                                <button type="submit" class="button wpcss-add-selected"
+                                                        name="wpcss-action"
+                                                        value="selected"><?php echo self::localization( 'selected', esc_html__( 'Add selected products to cart', 'wpc-share-cart' ) ); ?></button>
 											<?php }
 
 											if ( self::get_setting( 'add_all', 'yes' ) === 'yes' ) { ?>
-                                                <button type="submit" class="button wpcss-add-all" name="wpcss-action" value="all"><?php echo self::localization( 'restore', esc_html__( 'Restore cart', 'wpc-share-cart' ) ); ?></button>
+                                                <button type="submit" class="button wpcss-add-all" name="wpcss-action"
+                                                        value="all"><?php echo self::localization( 'restore', esc_html__( 'Restore cart', 'wpc-share-cart' ) ); ?></button>
 											<?php } ?>
                                         </div>
                                     </td>
@@ -442,7 +468,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
 				function admin_footer() {
 					?>
-                    <div class="wpcss-dialog" id="wpcss_dialog" style="display: none" title="<?php esc_html_e( 'Shared Cart', 'wpc-share-cart' ); ?>"></div>
+                    <div class="wpcss-dialog" id="wpcss_dialog" style="display: none"
+                         title="<?php esc_html_e( 'Shared Cart', 'wpc-share-cart' ); ?>"></div>
 					<?php
 				}
 
@@ -471,9 +498,12 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             <p>
 								<?php printf( /* translators: stars */ esc_html__( 'Thank you for using our plugin! If you are satisfied, please reward it a full five-star %s rating.', 'wpc-share-cart' ), '<span style="color:#ffb900">&#9733;&#9733;&#9733;&#9733;&#9733;</span>' ); ?>
                                 <br/>
-                                <a href="<?php echo esc_url( WPCSS_REVIEWS ); ?>" target="_blank"><?php esc_html_e( 'Reviews', 'wpc-share-cart' ); ?></a> |
-                                <a href="<?php echo esc_url( WPCSS_CHANGELOG ); ?>" target="_blank"><?php esc_html_e( 'Changelog', 'wpc-share-cart' ); ?></a> |
-                                <a href="<?php echo esc_url( WPCSS_DISCUSSION ); ?>" target="_blank"><?php esc_html_e( 'Discussion', 'wpc-share-cart' ); ?></a>
+                                <a href="<?php echo esc_url( WPCSS_REVIEWS ); ?>"
+                                   target="_blank"><?php esc_html_e( 'Reviews', 'wpc-share-cart' ); ?></a> |
+                                <a href="<?php echo esc_url( WPCSS_CHANGELOG ); ?>"
+                                   target="_blank"><?php esc_html_e( 'Changelog', 'wpc-share-cart' ); ?></a> |
+                                <a href="<?php echo esc_url( WPCSS_DISCUSSION ); ?>"
+                                   target="_blank"><?php esc_html_e( 'Discussion', 'wpc-share-cart' ); ?></a>
                             </p>
                         </div>
 						<?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] ) { ?>
@@ -483,19 +513,25 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 						<?php } ?>
                         <div class="wpclever_settings_page_nav">
                             <h2 class="nav-tab-wrapper">
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=settings' ) ); ?>" class="<?php echo esc_attr( $active_tab === 'settings' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=settings' ) ); ?>"
+                                   class="<?php echo esc_attr( $active_tab === 'settings' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
 									<?php esc_html_e( 'Settings', 'wpc-share-cart' ); ?>
                                 </a>
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=localization' ) ); ?>" class="<?php echo esc_attr( $active_tab === 'localization' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=localization' ) ); ?>"
+                                   class="<?php echo esc_attr( $active_tab === 'localization' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
 									<?php esc_html_e( 'Localization', 'wpc-share-cart' ); ?>
                                 </a>
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=carts' ) ); ?>" class="<?php echo esc_attr( $active_tab === 'carts' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=carts' ) ); ?>"
+                                   class="<?php echo esc_attr( $active_tab === 'carts' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
 									<?php esc_html_e( 'Shared Carts', 'wpc-share-cart' ); ?>
                                 </a>
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=premium' ) ); ?>" class="<?php echo esc_attr( $active_tab === 'premium' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>" style="color: #c9356e">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=premium' ) ); ?>"
+                                   class="<?php echo esc_attr( $active_tab === 'premium' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>"
+                                   style="color: #c9356e">
 									<?php esc_html_e( 'Premium Version', 'wpc-share-cart' ); ?>
                                 </a>
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-kit' ) ); ?>" class="nav-tab">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-kit' ) ); ?>"
+                                   class="nav-tab">
 									<?php esc_html_e( 'Essential Kit', 'wpc-share-cart' ); ?>
                                 </a>
                             </h2>
@@ -543,7 +579,9 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                         <option value="yes_blank" <?php selected( $link, 'yes_blank' ); ?>><?php esc_html_e( 'Yes, open in the new tab', 'wpc-share-cart' ); ?></option>
                                                         <option value="yes_popup" <?php selected( $link, 'yes_popup' ); ?>><?php esc_html_e( 'Yes, open quick view popup', 'wpc-share-cart' ); ?></option>
                                                         <option value="no" <?php selected( $link, 'no' ); ?>><?php esc_html_e( 'No', 'wpc-share-cart' ); ?></option>
-                                                    </select> </label> <span class="description">If you choose "Open quick view popup", please install and activate <a href="<?php echo esc_url( admin_url( 'plugin-install.php?tab=plugin-information&plugin=woo-smart-quick-view&TB_iframe=true&width=800&height=550' ) ); ?>" class="thickbox" title="WPC Smart Quick View">WPC Smart Quick View</a> to make it work.</span>
+                                                    </select> </label> <span class="description">If you choose "Open quick view popup", please install and activate <a
+                                                            href="<?php echo esc_url( admin_url( 'plugin-install.php?tab=plugin-information&plugin=woo-smart-quick-view&TB_iframe=true&width=800&height=550' ) ); ?>"
+                                                            class="thickbox" title="WPC Smart Quick View">WPC Smart Quick View</a> to make it work.</span>
                                             </td>
                                         </tr>
                                         <tr>
@@ -647,7 +685,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Button text', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[button]" value="<?php echo esc_attr( self::localization( 'button' ) ); ?>" placeholder="<?php esc_attr_e( 'Share cart', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[button]"
+                                                           value="<?php echo esc_attr( self::localization( 'button' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Share cart', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -655,7 +696,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Message', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[message]" value="<?php echo esc_attr( self::localization( 'message' ) ); ?>" placeholder="<?php esc_attr_e( 'Share link was generated! Now you can copy below link to share.', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[message]"
+                                                           value="<?php echo esc_attr( self::localization( 'message' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Share link was generated! Now you can copy below link to share.', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -663,7 +707,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Share on', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[share_on]" value="<?php echo esc_attr( self::localization( 'share_on' ) ); ?>" placeholder="<?php esc_attr_e( 'Share on:', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[share_on]"
+                                                           value="<?php echo esc_attr( self::localization( 'share_on' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Share on:', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -671,7 +718,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Share link', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[share_link]" value="<?php echo esc_attr( self::localization( 'share_link' ) ); ?>" placeholder="<?php esc_attr_e( 'Share link:', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[share_link]"
+                                                           value="<?php echo esc_attr( self::localization( 'share_link' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Share link:', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -679,7 +729,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Copy button', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[copy_button]" value="<?php echo esc_attr( self::localization( 'copy_button' ) ); ?>" placeholder="<?php esc_attr_e( 'Copy', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[copy_button]"
+                                                           value="<?php echo esc_attr( self::localization( 'copy_button' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Copy', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -687,8 +740,11 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Copy message', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[copy_message]" value="<?php echo esc_attr( self::localization( 'copy_message' ) ); ?>" placeholder="<?php /* translators: link */
-													esc_attr_e( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[copy_message]"
+                                                           value="<?php echo esc_attr( self::localization( 'copy_message' ) ); ?>"
+                                                           placeholder="<?php /* translators: link */
+													       esc_attr_e( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -696,7 +752,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Add selected', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[selected]" value="<?php echo esc_attr( self::localization( 'selected' ) ); ?>" placeholder="<?php esc_attr_e( 'Add selected products to cart', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[selected]"
+                                                           value="<?php echo esc_attr( self::localization( 'selected' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Add selected products to cart', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -704,7 +763,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Restore cart', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[restore]" value="<?php echo esc_attr( self::localization( 'restore' ) ); ?>" placeholder="<?php esc_attr_e( 'Restore cart', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[restore]"
+                                                           value="<?php echo esc_attr( self::localization( 'restore' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Restore cart', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -712,7 +774,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Note', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[note]" value="<?php echo esc_attr( self::localization( 'note' ) ); ?>" placeholder="<?php esc_attr_e( 'Note:', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[note]"
+                                                           value="<?php echo esc_attr( self::localization( 'note' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Note:', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -724,7 +789,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Product', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[column_product]" value="<?php echo esc_attr( self::localization( 'column_product' ) ); ?>" placeholder="<?php esc_attr_e( 'Product', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[column_product]"
+                                                           value="<?php echo esc_attr( self::localization( 'column_product' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Product', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -732,7 +800,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Price', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[column_price]" value="<?php echo esc_attr( self::localization( 'column_price' ) ); ?>" placeholder="<?php esc_attr_e( 'Price', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[column_price]"
+                                                           value="<?php echo esc_attr( self::localization( 'column_price' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Price', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -740,7 +811,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Quantity', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[column_quantity]" value="<?php echo esc_attr( self::localization( 'column_quantity' ) ); ?>" placeholder="<?php esc_attr_e( 'Quantity', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[column_quantity]"
+                                                           value="<?php echo esc_attr( self::localization( 'column_quantity' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Quantity', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -748,7 +822,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th><?php esc_html_e( 'Subtotal', 'wpc-share-cart' ); ?></th>
                                             <td>
                                                 <label>
-                                                    <input type="text" class="regular-text" name="wpcss_localization[column_subtotal]" value="<?php echo esc_attr( self::localization( 'column_subtotal' ) ); ?>" placeholder="<?php esc_attr_e( 'Subtotal', 'wpc-share-cart' ); ?>"/>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[column_subtotal]"
+                                                           value="<?php echo esc_attr( self::localization( 'column_subtotal' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Subtotal', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -782,16 +859,21 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <div class="wpcss-shared-carts wpcss-shared-carts-premium">
                                                 <p style="color: #c9356e">
                                                     This feature is only available on the Premium Version. Click
-                                                    <a href="https://wpclever.net/downloads/wpc-share-cart/?utm_source=pro&utm_medium=wpcss&utm_campaign=wporg" target="_blank">here</a> to buy, just $29.
+                                                    <a href="https://wpclever.net/downloads/wpc-share-cart/?utm_source=pro&utm_medium=wpcss&utm_campaign=wporg"
+                                                       target="_blank">here</a> to buy, just $29.
                                                 </p>
                                                 <div class="tablenav top">
                                                     <div class="alignleft actions">
-                                                        <form method="GET" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+                                                        <form method="GET"
+                                                              action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
                                                             <input type="hidden" name="page" value="wpclever-wpcss"/>
                                                             <input type="hidden" name="tab" value="carts"/> <label>
-                                                                <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Key"/>
+                                                                <input type="search" name="s"
+                                                                       value="<?php echo esc_attr( $search ); ?>"
+                                                                       placeholder="Key"/>
                                                             </label>
-                                                            <input type="submit" class="button" value="<?php esc_attr_e( 'Search', 'wpc-share-cart' ); ?>"/>
+                                                            <input type="submit" class="button"
+                                                                   value="<?php esc_attr_e( 'Search', 'wpc-share-cart' ); ?>"/>
                                                         </form>
                                                     </div>
                                                     <div class="tablenav-pages">
@@ -894,7 +976,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 							<?php } elseif ( $active_tab === 'premium' ) { ?>
                                 <div class="wpclever_settings_page_content_text">
                                     <p>Get the Premium Version just $29!
-                                        <a href="https://wpclever.net/downloads/wpc-share-cart/?utm_source=pro&utm_medium=wpcss&utm_campaign=wporg" target="_blank">https://wpclever.net/downloads/wpc-share-cart/</a>
+                                        <a href="https://wpclever.net/downloads/wpc-share-cart/?utm_source=pro&utm_medium=wpcss&utm_campaign=wporg"
+                                           target="_blank">https://wpclever.net/downloads/wpc-share-cart/</a>
                                     </p>
                                     <p><strong>Extra features for Premium Version:</strong></p>
                                     <ul style="margin-bottom: 0">
@@ -915,13 +998,17 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                             <div class="wpclever_settings_page_suggestion_content">
                                 <div>
-                                    To display custom engaging real-time messages on any wished positions, please install
-                                    <a href="https://wordpress.org/plugins/wpc-smart-messages/" target="_blank">WPC Smart Messages</a> plugin. It's free!
+                                    To display custom engaging real-time messages on any wished positions, please
+                                    install
+                                    <a href="https://wordpress.org/plugins/wpc-smart-messages/" target="_blank">WPC
+                                        Smart Messages</a> plugin. It's free!
                                 </div>
                                 <div>
                                     Wanna save your precious time working on variations? Try our brand-new free plugin
-                                    <a href="https://wordpress.org/plugins/wpc-variation-bulk-editor/" target="_blank">WPC Variation Bulk Editor</a> and
-                                    <a href="https://wordpress.org/plugins/wpc-variation-duplicator/" target="_blank">WPC Variation Duplicator</a>.
+                                    <a href="https://wordpress.org/plugins/wpc-variation-bulk-editor/" target="_blank">WPC
+                                        Variation Bulk Editor</a> and
+                                    <a href="https://wordpress.org/plugins/wpc-variation-duplicator/" target="_blank">WPC
+                                        Variation Duplicator</a>.
                                 </div>
                             </div>
                         </div>
@@ -1017,7 +1104,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 						<?php echo self::localization( 'message', esc_html__( 'Share link was generated! Now you can copy below link to share.', 'wpc-share-cart' ) ); ?>
                     </div>
                     <div class="wpcss-popup-link">
-                        <label for="wpcss_copy_url"></label><input type="url" id="wpcss_copy_url" value="<?php echo esc_url( $url ); ?>" readonly/>
+                        <label for="wpcss_copy_url"></label><input type="url" id="wpcss_copy_url"
+                                                                   value="<?php echo esc_url( $url ); ?>" readonly/>
                     </div>
 					<?php
 					echo self::share_links( urlencode( $url ) );
