@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.3
+Version: 2.1.4
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -19,7 +19,7 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.3' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.4' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -1116,6 +1116,9 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
 				function footer() {
 					?>
+                    <div class="wpcss-footer-btn" style="display: none">
+						<?php echo do_shortcode( '[wpcss_btn]' ); ?>
+                    </div>
                     <div class="wpcss-area">
                         <div class="wpcss-popup">
                             <div class="wpcss-popup-inner">
