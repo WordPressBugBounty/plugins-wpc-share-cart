@@ -3,23 +3,23 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.4
+Version: 2.1.5
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
 Domain Path: /languages/
 Requires Plugins: woocommerce
 Requires at least: 4.0
-Tested up to: 6.7
+Tested up to: 6.8
 WC requires at least: 3.0
-WC tested up to: 9.7
+WC tested up to: 6.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.4' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.5' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -171,6 +171,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
 					// Cache frequently accessed values
 					$security = sanitize_key( $_POST['wpcss-security'] );
+
 					if ( ! wp_verify_nonce( $security, 'wpcss_add_products' ) ) {
 						wp_die( 'Permissions check failed.' );
 					}
@@ -232,6 +233,9 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 							unset( $cart_item['wpcss_price'], $cart_item['wpcss_subtotal'] );
 							$args[] = $cart_item;
 						}
+
+						// Filter args before adding to the cart
+						$args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item );
 
 						$wc_cart->add_to_cart( ...$args );
 					}
@@ -460,7 +464,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 							'jquery-ui-sortable',
 						], WPCSS_VERSION, true );
 						wp_localize_script( 'wpcss-backend', 'wpcss_vars', [
-								'nonce' => wp_create_nonce( 'wpcss_nonce' )
+								'nonce' => wp_create_nonce( 'wpcss-security' )
 							]
 						);
 					}
