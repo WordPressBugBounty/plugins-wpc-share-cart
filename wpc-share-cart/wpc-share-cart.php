@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.5
+Version: 2.1.6
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.8
 WC requires at least: 3.0
-WC tested up to: 6.8
+WC tested up to: 9.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.5' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.6' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -327,7 +327,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                 <tr>
 									<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                         <th class="product-checkbox">
-                                            <label> <input type="checkbox" class="wpcss-checkbox-all" checked/> </label>
+											<?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
                                         </th>
 									<?php } ?>
                                     <th class="product-thumbnail">&nbsp;</th>
@@ -411,7 +411,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                 <tr>
 									<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                         <td class="product-checkbox">
-                                            <label> <input type="checkbox" class="wpcss-checkbox-all" checked/> </label>
+											<?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
                                         </td>
 									<?php } ?>
                                     <td colspan="5">
