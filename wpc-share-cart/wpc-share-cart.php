@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.6
+Version: 2.1.7
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.8
 WC requires at least: 3.0
-WC tested up to: 9.8
+WC tested up to: 9.9
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.6' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.7' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -546,6 +546,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 									flush_rewrite_rules();
 								}
 
+								$need_login   = self::get_setting( 'need_login', 'no' );
 								$link         = self::get_setting( 'link', 'yes' );
 								$add_selected = self::get_setting( 'add_selected', 'yes' );
 								$add_all      = self::get_setting( 'add_all', 'yes' );
@@ -562,6 +563,16 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th colspan="2">
 												<?php esc_html_e( 'General', 'wpc-share-cart' ); ?>
                                             </th>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Disable for unauthenticated users', 'wpc-share-cart' ); ?></th>
+                                            <td>
+                                                <label> <select name="wpcss_settings[need_login]">
+                                                        <option value="yes" <?php selected( $need_login, 'yes' ); ?>><?php esc_html_e( 'Yes', 'wpc-share-cart' ); ?></option>
+                                                        <option value="no" <?php selected( $need_login, 'no' ); ?>><?php esc_html_e( 'No', 'wpc-share-cart' ); ?></option>
+                                                    </select> </label> <span
+                                                        class="description"><?php esc_html_e( 'Requires users to log in to share the cart.', 'wpc-share-cart' ); ?></span>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th scope="row"><?php esc_html_e( 'Share page', 'wpc-share-cart' ); ?></th>
@@ -683,6 +694,17 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                             <th scope="row"><?php esc_html_e( 'General', 'wpc-share-cart' ); ?></th>
                                             <td>
 												<?php esc_html_e( 'Leave blank to use the default text and its equivalent translation in multiple languages.', 'wpc-share-cart' ); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Need login', 'wpc-share-cart' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[need_login]"
+                                                           value="<?php echo esc_attr( self::localization( 'need_login' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Please login to be able to share your shopping cart.', 'wpc-share-cart' ); ?>"/>
+                                                </label>
                                             </td>
                                         </tr>
                                         <tr>
@@ -1077,6 +1099,11 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 				function ajax_share() {
 					if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
 						die( 'Permissions check failed!' );
+					}
+
+					if ( self::get_setting( 'need_login', 'no' ) === 'yes' && ! is_user_logged_in() ) {
+						echo '<div class="wpcss-popup-text">' . self::localization( 'need_login', esc_html__( 'Please login to be able to share your shopping cart.', 'wpc-share-cart' ) ) . '</div>';
+						wp_die();
 					}
 
 					$url  = '';
