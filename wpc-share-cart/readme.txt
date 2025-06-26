@@ -3,8 +3,8 @@ Contributors: wpclever
 Donate link: https://wpclever.net
 Tags: woocommerce, wpc, share cart, cart link
 Tested up to: 6.8
-Version: 2.1.7
-Stable tag: 2.1.7
+Version: 2.1.8
+Stable tag: 2.1.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -65,6 +65,10 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 4. Go to WP-admin > WPClever > Share Cart to configure
 
 == Changelog ==
+
+= 2.1.8 =
+* Fixed: Minor CSS/JS issues in the backend
+* Fixed: Compatible with WP 6.8 & Woo 9.9
 
 = 2.1.7 =
 * Added: Option to disable for unauthenticated users
