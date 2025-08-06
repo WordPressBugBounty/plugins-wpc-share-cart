@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.8
+Version: 2.1.9
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.8
 WC requires at least: 3.0
-WC tested up to: 9.9
+WC tested up to: 10.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.8' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.9' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -517,7 +517,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                         </div>
                         <h2></h2>
-                        <?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] ) { ?>
+						<?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] ) { ?>
                             <div class="notice notice-success is-dismissible">
                                 <p><?php esc_html_e( 'Settings updated.', 'wpc-share-cart' ); ?></p>
                             </div>
@@ -1130,8 +1130,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 								'time'     => time(),
 							];
 
-							update_option( 'wpcss_cart_' . $key, $cart_data );
-							update_option( 'wpcss_hash_' . $hash, $key );
+							update_option( 'wpcss_cart_' . $key, $cart_data, false );
+							update_option( 'wpcss_hash_' . $hash, $key, false );
 							$url = self::get_url( $key );
 						}
 					}
