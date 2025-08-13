@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.1.9
+Version: 2.2.0
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -19,7 +19,7 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.1.9' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.2.0' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -1104,8 +1104,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 				}
 
 				function ajax_share() {
-					if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
-						die( 'Permissions check failed!' );
+					if ( ! apply_filters( 'wpcss_disable_security_check', false, 'share' ) ) {
+						if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
+							die( 'Permissions check failed!' );
+						}
 					}
 
 					if ( self::get_setting( 'need_login', 'no' ) === 'yes' && ! is_user_logged_in() ) {
