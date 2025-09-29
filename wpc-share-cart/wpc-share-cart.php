@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.2.0
+Version: 2.2.1
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 4.0
 Tested up to: 6.8
 WC requires at least: 3.0
-WC tested up to: 10.0
+WC tested up to: 10.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.2.0' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.2.1' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -35,301 +35,301 @@ include 'includes/kit/wpc-kit.php';
 include 'includes/hpos.php';
 
 if ( ! function_exists( 'wpcss_init' ) ) {
-	add_action( 'plugins_loaded', 'wpcss_init', 11 );
-
-	function wpcss_init() {
-		if ( ! function_exists( 'WC' ) || ! version_compare( WC()->version, '3.0', '>=' ) ) {
-			add_action( 'admin_notices', 'wpcss_notice_wc' );
-
-			return null;
-		}
-
-		if ( ! class_exists( 'WPCleverWpcss' ) ) {
-			class WPCleverWpcss {
-				protected static $settings = [];
-				protected static $localization = [];
-				protected static $instance = null;
-
-				public static function instance() {
-					if ( is_null( self::$instance ) ) {
-						self::$instance = new self();
-					}
-
-					return self::$instance;
-				}
-
-				function __construct() {
-					self::$settings     = (array) get_option( 'wpcss_settings', [] );
-					self::$localization = (array) get_option( 'wpcss_localization', [] );
-
-					// add query var
-					add_filter( 'query_vars', [ $this, 'query_vars' ], 1 );
-
-					add_action( 'init', [ $this, 'init' ] );
-
-					// add products from share cart
-					add_action( 'wp', [ $this, 'add_products' ] );
-
-					// settings
-					add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
-					add_action( 'admin_init', [ $this, 'register_settings' ] );
-					add_action( 'admin_menu', [ $this, 'admin_menu' ] );
-					add_action( 'admin_footer', [ $this, 'admin_footer' ] );
-
-					// frontend scripts
-					add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
-
-					// link
-					add_filter( 'plugin_action_links', [ $this, 'action_links' ], 10, 2 );
-					add_filter( 'plugin_row_meta', [ $this, 'row_meta' ], 10, 2 );
-
-					// share button on cart page
-					add_action( 'woocommerce_cart_actions', [ $this, 'share_button' ] );
-
-					// ajax share
-					add_action( 'wc_ajax_wpcss_share', [ $this, 'ajax_share' ] );
-
-					// footer
-					add_action( 'wp_footer', [ $this, 'footer' ] );
-				}
-
-				function query_vars( $vars ) {
-					$vars[] = 'wpcss_id';
-
-					return $vars;
-				}
-
-				function init() {
-					// load text-domain
-					load_plugin_textdomain( 'wpc-share-cart', false, basename( WPCSS_DIR ) . '/languages/' );
-
-					// add page
-					$wpcss_page = get_page_by_path( 'share-cart', OBJECT );
-
-					if ( empty( $wpcss_page ) ) {
-						$wpcss_page_data = [
-							'post_status'    => 'publish',
-							'post_type'      => 'page',
-							'post_author'    => 1,
-							'post_name'      => 'share-cart',
-							'post_title'     => esc_html__( 'Share Cart', 'wpc-share-cart' ),
-							'post_content'   => '[wpcss_list]',
-							'post_parent'    => 0,
-							'comment_status' => 'closed'
-						];
-						$wpcss_page_id   = wp_insert_post( $wpcss_page_data );
-
-						update_option( 'wpcss_page_id', $wpcss_page_id );
-					}
-
-					// rewrite
-					if ( $page_id = self::get_page_id() ) {
-						$page_slug = get_post_field( 'post_name', $page_id );
-
-						if ( $page_slug !== '' ) {
-							add_rewrite_rule( '^' . $page_slug . '/([\w]+)/?', 'index.php?page_id=' . $page_id . '&wpcss_id=$matches[1]', 'top' );
-						}
-					}
-
-					// shortcode
-					add_shortcode( 'wpcss_btn', [ $this, 'shortcode_btn' ] );
-					add_shortcode( 'wpcss_list', [ $this, 'shortcode_list' ] );
-					add_shortcode( 'wpcss_cart', [ $this, 'shortcode_list' ] );
-				}
-
-				public static function get_settings() {
-					return apply_filters( 'wpcss_get_settings', self::$settings );
-				}
-
-				public static function get_setting( $name, $default = false ) {
-					if ( ! empty( self::$settings ) && isset( self::$settings[ $name ] ) ) {
-						$setting = self::$settings[ $name ];
-					} else {
-						$setting = get_option( 'wpcss_' . $name, $default );
-					}
-
-					return apply_filters( 'wpcss_get_setting', $setting, $name, $default );
-				}
-
-				public static function localization( $key = '', $default = '' ) {
-					$str = '';
-
-					if ( ! empty( $key ) && ! empty( self::$localization[ $key ] ) ) {
-						$str = self::$localization[ $key ];
-					} elseif ( ! empty( $default ) ) {
-						$str = $default;
-					}
-
-					return apply_filters( 'wpcss_localization_' . $key, $str );
-				}
-
-				function add_products() {
-					// Early return if required POST parameters are missing
-					if ( ! isset( $_POST['wpcss-action'], $_POST['wpcss-key'], $_POST['wpcss-security'] ) ) {
-						return;
-					}
-
-					// Cache frequently accessed values
-					$security = sanitize_key( $_POST['wpcss-security'] );
-
-					if ( ! wp_verify_nonce( $security, 'wpcss_add_products' ) ) {
-						wp_die( 'Permissions check failed.' );
-					}
-
-					// Cache settings to avoid multiple database calls
-					$keep_data = self::get_setting( 'keep_data', 'yes' ) === 'yes';
-					$cart_key  = 'cart_' . sanitize_key( $_POST['wpcss-key'] );
-
-					// Get saved cart data
-					$saved_cart = self::get_setting( $cart_key );
-
-					if ( empty( $saved_cart['cart'] ) ) {
-						return;
-					}
-
-					$saved_cart_items = $saved_cart['cart'];
-					$action           = sanitize_key( $_POST['wpcss-action'] );
-					$wc_cart          = WC()->cart;
-
-					// Prepare cart items based on action
-					$items_to_process = [];
-
-					if ( $action === 'selected' ) {
-						if ( empty( $_POST['wpcss-products'] ) ) {
-							return;
-						}
-
-						$selected_products = self::sanitize_array( $_POST['wpcss-products'] );
-						// Filter only existing products
-						$items_to_process = array_intersect_key(
-							$saved_cart_items,
-							array_flip( $selected_products )
-						);
-					} elseif ( $action === 'all' ) {
-						$wc_cart->empty_cart();
-						$items_to_process = $saved_cart_items;
-					}
-
-					if ( empty( $items_to_process ) ) {
-						return;
-					}
-
-					// Batch process cart items
-					$cart_items = array_filter( $items_to_process, function ( $item ) {
-						return ! self::is_special_cart_item( $item );
-					} );
-
-					// Add items to cart in batch
-					foreach ( $cart_items as $cart_item ) {
-						$args = [
-							$cart_item['product_id'],
-							$cart_item['quantity'],
-							$cart_item['variation_id'],
-							$cart_item['variation']
-						];
-
-						if ( $keep_data ) {
-							// Remove unnecessary data if keep_data is enabled
-							unset( $cart_item['wpcss_price'], $cart_item['wpcss_subtotal'] );
-							$args[] = $cart_item;
-						}
-
-						// Filter args before adding to the cart
-						$args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item );
-
-						$wc_cart->add_to_cart( ...$args );
-					}
-
-					// Handle redirect if needed
-					if ( self::get_setting( 'redirect', 'yes' ) === 'yes' ) {
-						wp_safe_redirect( wc_get_cart_url() );
-						exit;
-					}
-				}
-
-				function share_links( $url ) {
-					$share_links = '';
-
-					if ( self::get_setting( 'page_share', 'yes' ) === 'yes' ) {
-						$facebook  = esc_html__( 'Facebook', 'wpc-share-cart' );
-						$twitter   = esc_html__( 'Twitter', 'wpc-share-cart' );
-						$pinterest = esc_html__( 'Pinterest', 'wpc-share-cart' );
-						$mail      = esc_html__( 'Mail', 'wpc-share-cart' );
-
-						if ( self::get_setting( 'page_icon', 'yes' ) === 'yes' ) {
-							$facebook = $twitter = $pinterest = $mail = "<i class='wpcss-icon'></i>";
-						}
-
-						$page_items = (array) self::get_setting( 'page_items', [] );
-
-						if ( ! empty( $page_items ) ) {
-							$share_links .= '<div class="wpcss-share-links">';
-							$share_links .= '<span class="wpcss-share-label">' . self::localization( 'share_on', esc_html__( 'Share on:', 'wpc-share-cart' ) ) . '</span>';
-							$share_links .= ( in_array( 'facebook', $page_items ) ) ? '<a class="wpcss-share-facebook" href="https://www.facebook.com/sharer.php?u=' . $url . '" target="_blank">' . $facebook . '</a>' : '';
-							$share_links .= ( in_array( 'twitter', $page_items ) ) ? '<a class="wpcss-share-twitter" href="https://twitter.com/share?url=' . $url . '" target="_blank">' . $twitter . '</a>' : '';
-							$share_links .= ( in_array( 'pinterest', $page_items ) ) ? '<a class="wpcss-share-pinterest" href="https://pinterest.com/pin/create/button/?url=' . $url . '" target="_blank">' . $pinterest . '</a>' : '';
-							$share_links .= ( in_array( 'mail', $page_items ) ) ? '<a class="wpcss-share-mail" href="mailto:?body=' . $url . '" target="_blank">' . $mail . '</a>' : '';
-							$share_links .= '</div>';
-						}
-					}
-
-					return apply_filters( 'wpcss_share_links', $share_links, $url );
-				}
-
-				function shortcode_btn( $attrs ) {
-					if ( ! isset( WC()->cart ) ) {
-						return '';
-					}
-
-					$attrs = shortcode_atts( [
-						'text'    => self::localization( 'button', esc_html__( 'Share cart', 'wpc-share-cart' ) ),
-						'class'   => 'button',
-						'context' => ''
-					], $attrs );
-
-					$btn = '<button class="' . esc_attr( 'wpcss-btn ' . $attrs['class'] ) . '" data-hash="' . esc_attr( WC()->cart->get_cart_hash() ) . '">' . esc_html( $attrs['text'] ) . '</button>';
-
-					return apply_filters( 'wpcss_shortcode_btn', $btn, $attrs );
-				}
-
-				function shortcode_list( $attrs ) {
-					if ( ! isset( WC()->cart ) ) {
-						return '';
-					}
-
-					$attrs = shortcode_atts( [
-						'key'     => null,
-						'share'   => 'true',
-						'context' => ''
-					], $attrs );
-
-					$key = $attrs['key'] ?? get_query_var( 'wpcss_id' );
-
-					if ( empty( $key ) ) {
-						return '';
-					}
-
-					$url_raw = self::get_url( $key );
-					$url     = urlencode( $url_raw );
-					$cart    = self::get_setting( 'cart_' . $key );
-					$class   = apply_filters( 'wpcss_wrapper_class', 'wpcss-cart wpcss-cart-' . $key, $attrs );
-
-					if ( empty( $cart ) || ! isset( $cart['cart'] ) ) {
-						return '';
-					}
-
-					ob_start();
-					?>
+    add_action( 'plugins_loaded', 'wpcss_init', 11 );
+
+    function wpcss_init() {
+        if ( ! function_exists( 'WC' ) || ! version_compare( WC()->version, '3.0', '>=' ) ) {
+            add_action( 'admin_notices', 'wpcss_notice_wc' );
+
+            return null;
+        }
+
+        if ( ! class_exists( 'WPCleverWpcss' ) ) {
+            class WPCleverWpcss {
+                protected static $settings = [];
+                protected static $localization = [];
+                protected static $instance = null;
+
+                public static function instance() {
+                    if ( is_null( self::$instance ) ) {
+                        self::$instance = new self();
+                    }
+
+                    return self::$instance;
+                }
+
+                function __construct() {
+                    self::$settings     = (array) get_option( 'wpcss_settings', [] );
+                    self::$localization = (array) get_option( 'wpcss_localization', [] );
+
+                    // add query var
+                    add_filter( 'query_vars', [ $this, 'query_vars' ], 1 );
+
+                    add_action( 'init', [ $this, 'init' ] );
+
+                    // add products from share cart
+                    add_action( 'wp', [ $this, 'add_products' ] );
+
+                    // settings
+                    add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
+                    add_action( 'admin_init', [ $this, 'register_settings' ] );
+                    add_action( 'admin_menu', [ $this, 'admin_menu' ] );
+                    add_action( 'admin_footer', [ $this, 'admin_footer' ] );
+
+                    // frontend scripts
+                    add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
+
+                    // link
+                    add_filter( 'plugin_action_links', [ $this, 'action_links' ], 10, 2 );
+                    add_filter( 'plugin_row_meta', [ $this, 'row_meta' ], 10, 2 );
+
+                    // share button on cart page
+                    add_action( 'woocommerce_cart_actions', [ $this, 'share_button' ] );
+
+                    // ajax share
+                    add_action( 'wc_ajax_wpcss_share', [ $this, 'ajax_share' ] );
+
+                    // footer
+                    add_action( 'wp_footer', [ $this, 'footer' ] );
+                }
+
+                function query_vars( $vars ) {
+                    $vars[] = 'wpcss_id';
+
+                    return $vars;
+                }
+
+                function init() {
+                    // load text-domain
+                    load_plugin_textdomain( 'wpc-share-cart', false, basename( WPCSS_DIR ) . '/languages/' );
+
+                    // add page
+                    $wpcss_page = get_page_by_path( 'share-cart', OBJECT );
+
+                    if ( empty( $wpcss_page ) ) {
+                        $wpcss_page_data = [
+                                'post_status'    => 'publish',
+                                'post_type'      => 'page',
+                                'post_author'    => 1,
+                                'post_name'      => 'share-cart',
+                                'post_title'     => esc_html__( 'Share Cart', 'wpc-share-cart' ),
+                                'post_content'   => '[wpcss_list]',
+                                'post_parent'    => 0,
+                                'comment_status' => 'closed'
+                        ];
+                        $wpcss_page_id   = wp_insert_post( $wpcss_page_data );
+
+                        update_option( 'wpcss_page_id', $wpcss_page_id );
+                    }
+
+                    // rewrite
+                    if ( $page_id = self::get_page_id() ) {
+                        $page_slug = get_post_field( 'post_name', $page_id );
+
+                        if ( $page_slug !== '' ) {
+                            add_rewrite_rule( '^' . $page_slug . '/([\w]+)/?', 'index.php?page_id=' . $page_id . '&wpcss_id=$matches[1]', 'top' );
+                        }
+                    }
+
+                    // shortcode
+                    add_shortcode( 'wpcss_btn', [ $this, 'shortcode_btn' ] );
+                    add_shortcode( 'wpcss_list', [ $this, 'shortcode_list' ] );
+                    add_shortcode( 'wpcss_cart', [ $this, 'shortcode_list' ] );
+                }
+
+                public static function get_settings() {
+                    return apply_filters( 'wpcss_get_settings', self::$settings );
+                }
+
+                public static function get_setting( $name, $default = false ) {
+                    if ( ! empty( self::$settings ) && isset( self::$settings[ $name ] ) ) {
+                        $setting = self::$settings[ $name ];
+                    } else {
+                        $setting = get_option( 'wpcss_' . $name, $default );
+                    }
+
+                    return apply_filters( 'wpcss_get_setting', $setting, $name, $default );
+                }
+
+                public static function localization( $key = '', $default = '' ) {
+                    $str = '';
+
+                    if ( ! empty( $key ) && ! empty( self::$localization[ $key ] ) ) {
+                        $str = self::$localization[ $key ];
+                    } elseif ( ! empty( $default ) ) {
+                        $str = $default;
+                    }
+
+                    return apply_filters( 'wpcss_localization_' . $key, $str );
+                }
+
+                function add_products() {
+                    // Early return if required POST parameters are missing
+                    if ( ! isset( $_POST['wpcss-action'], $_POST['wpcss-key'], $_POST['wpcss-security'] ) ) {
+                        return;
+                    }
+
+                    // Cache frequently accessed values
+                    $security = sanitize_key( $_POST['wpcss-security'] );
+
+                    if ( ! wp_verify_nonce( $security, 'wpcss_add_products' ) ) {
+                        wp_die( 'Permissions check failed.' );
+                    }
+
+                    // Cache settings to avoid multiple database calls
+                    $keep_data = self::get_setting( 'keep_data', 'yes' ) === 'yes';
+                    $cart_key  = 'cart_' . sanitize_key( $_POST['wpcss-key'] );
+
+                    // Get saved cart data
+                    $saved_cart = self::get_setting( $cart_key );
+
+                    if ( empty( $saved_cart['cart'] ) ) {
+                        return;
+                    }
+
+                    $saved_cart_items = $saved_cart['cart'];
+                    $action           = sanitize_key( $_POST['wpcss-action'] );
+                    $wc_cart          = WC()->cart;
+
+                    // Prepare cart items based on action
+                    $items_to_process = [];
+
+                    if ( $action === 'selected' ) {
+                        if ( empty( $_POST['wpcss-products'] ) ) {
+                            return;
+                        }
+
+                        $selected_products = self::sanitize_array( $_POST['wpcss-products'] );
+                        // Filter only existing products
+                        $items_to_process = array_intersect_key(
+                                $saved_cart_items,
+                                array_flip( $selected_products )
+                        );
+                    } elseif ( $action === 'all' ) {
+                        $wc_cart->empty_cart();
+                        $items_to_process = $saved_cart_items;
+                    }
+
+                    if ( empty( $items_to_process ) ) {
+                        return;
+                    }
+
+                    // Batch process cart items
+                    $cart_items = array_filter( $items_to_process, function ( $item ) {
+                        return ! self::is_special_cart_item( $item );
+                    } );
+
+                    // Add items to cart in batch
+                    foreach ( $cart_items as $cart_item ) {
+                        $args = [
+                                $cart_item['product_id'],
+                                $cart_item['quantity'],
+                                $cart_item['variation_id'],
+                                $cart_item['variation']
+                        ];
+
+                        if ( $keep_data ) {
+                            // Remove unnecessary data if keep_data is enabled
+                            unset( $cart_item['wpcss_price'], $cart_item['wpcss_subtotal'] );
+                            $args[] = $cart_item;
+                        }
+
+                        // Filter args before adding to the cart
+                        $args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item );
+
+                        $wc_cart->add_to_cart( ...$args );
+                    }
+
+                    // Handle redirect if needed
+                    if ( self::get_setting( 'redirect', 'yes' ) === 'yes' ) {
+                        wp_safe_redirect( wc_get_cart_url() );
+                        exit;
+                    }
+                }
+
+                function share_links( $url ) {
+                    $share_links = '';
+
+                    if ( self::get_setting( 'page_share', 'yes' ) === 'yes' ) {
+                        $facebook  = esc_html__( 'Facebook', 'wpc-share-cart' );
+                        $twitter   = esc_html__( 'Twitter', 'wpc-share-cart' );
+                        $pinterest = esc_html__( 'Pinterest', 'wpc-share-cart' );
+                        $mail      = esc_html__( 'Mail', 'wpc-share-cart' );
+
+                        if ( self::get_setting( 'page_icon', 'yes' ) === 'yes' ) {
+                            $facebook = $twitter = $pinterest = $mail = "<i class='wpcss-icon'></i>";
+                        }
+
+                        $page_items = (array) self::get_setting( 'page_items', [] );
+
+                        if ( ! empty( $page_items ) ) {
+                            $share_links .= '<div class="wpcss-share-links">';
+                            $share_links .= '<span class="wpcss-share-label">' . self::localization( 'share_on', esc_html__( 'Share on:', 'wpc-share-cart' ) ) . '</span>';
+                            $share_links .= ( in_array( 'facebook', $page_items ) ) ? '<a class="wpcss-share-facebook" href="https://www.facebook.com/sharer.php?u=' . $url . '" target="_blank">' . $facebook . '</a>' : '';
+                            $share_links .= ( in_array( 'twitter', $page_items ) ) ? '<a class="wpcss-share-twitter" href="https://twitter.com/share?url=' . $url . '" target="_blank">' . $twitter . '</a>' : '';
+                            $share_links .= ( in_array( 'pinterest', $page_items ) ) ? '<a class="wpcss-share-pinterest" href="https://pinterest.com/pin/create/button/?url=' . $url . '" target="_blank">' . $pinterest . '</a>' : '';
+                            $share_links .= ( in_array( 'mail', $page_items ) ) ? '<a class="wpcss-share-mail" href="mailto:?body=' . $url . '" target="_blank">' . $mail . '</a>' : '';
+                            $share_links .= '</div>';
+                        }
+                    }
+
+                    return apply_filters( 'wpcss_share_links', $share_links, $url );
+                }
+
+                function shortcode_btn( $attrs ) {
+                    if ( ! isset( WC()->cart ) ) {
+                        return '';
+                    }
+
+                    $attrs = shortcode_atts( [
+                            'text'    => self::localization( 'button', esc_html__( 'Share cart', 'wpc-share-cart' ) ),
+                            'class'   => 'button',
+                            'context' => ''
+                    ], $attrs );
+
+                    $btn = '<button class="' . esc_attr( 'wpcss-btn ' . $attrs['class'] ) . '" data-hash="' . esc_attr( WC()->cart->get_cart_hash() ) . '">' . esc_html( $attrs['text'] ) . '</button>';
+
+                    return apply_filters( 'wpcss_shortcode_btn', $btn, $attrs );
+                }
+
+                function shortcode_list( $attrs ) {
+                    if ( ! isset( WC()->cart ) ) {
+                        return '';
+                    }
+
+                    $attrs = shortcode_atts( [
+                            'key'     => null,
+                            'share'   => 'true',
+                            'context' => ''
+                    ], $attrs );
+
+                    $key = $attrs['key'] ?? get_query_var( 'wpcss_id' );
+
+                    if ( empty( $key ) ) {
+                        return '';
+                    }
+
+                    $url_raw = self::get_url( $key );
+                    $url     = urlencode( $url_raw );
+                    $cart    = self::get_setting( 'cart_' . $key );
+                    $class   = apply_filters( 'wpcss_wrapper_class', 'wpcss-cart wpcss-cart-' . $key, $attrs );
+
+                    if ( empty( $cart ) || ! isset( $cart['cart'] ) ) {
+                        return '';
+                    }
+
+                    ob_start();
+                    ?>
                     <div class="<?php echo esc_attr( $class ); ?>">
                         <form method="post" action="">
                             <table class="wpcss-products shop_table shop_table_responsive cart woocommerce-cart-form__contents">
                                 <thead>
                                 <tr>
-									<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
+                                    <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                         <th class="product-checkbox">
-											<?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
+                                            <?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
                                         </th>
-									<?php } ?>
+                                    <?php } ?>
                                     <th class="product-thumbnail">&nbsp;</th>
                                     <th class="product-name"><?php echo self::localization( 'column_product', esc_html__( 'Product', 'wpc-share-cart' ) ); ?></th>
                                     <th class="product-price"><?php echo self::localization( 'column_price', esc_html__( 'Price', 'wpc-share-cart' ) ); ?></th>
@@ -338,164 +338,164 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                 </tr>
                                 </thead>
                                 <tbody>
-								<?php foreach ( $cart['cart'] as $cart_item_key => $cart_item ) {
-									$link       = self::get_setting( 'link', 'yes' );
-									$_product   = apply_filters( 'woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key );
-									$product_id = apply_filters( 'woocommerce_cart_item_product_id', $cart_item['product_id'], $cart_item, $cart_item_key );
+                                <?php foreach ( $cart['cart'] as $cart_item_key => $cart_item ) {
+                                    $link       = self::get_setting( 'link', 'yes' );
+                                    $_product   = apply_filters( 'woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key );
+                                    $product_id = apply_filters( 'woocommerce_cart_item_product_id', $cart_item['product_id'], $cart_item, $cart_item_key );
 
-									if ( $_product && is_a( $_product, 'WC_Product' ) && $_product->exists() && ( $cart_item['quantity'] > 0 ) && apply_filters( 'wpcss_item_visible', true, $cart_item ) ) {
-										$product_permalink = $_product->is_visible() ? $_product->get_permalink() : ''; ?>
+                                    if ( $_product && is_a( $_product, 'WC_Product' ) && $_product->exists() && ( $cart_item['quantity'] > 0 ) && apply_filters( 'wpcss_item_visible', true, $cart_item ) ) {
+                                        $product_permalink = $_product->is_visible() ? $_product->get_permalink() : ''; ?>
                                         <tr class="woocommerce-cart-form__cart-item">
-											<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
+                                            <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                                 <td class="product-checkbox">
-													<?php
-													if ( ! self::is_special_cart_item( $cart_item ) ) {
-														echo '<input type="checkbox" class="wpcss-checkbox" name="wpcss-products[]" value="' . esc_attr( $cart_item_key ) . '" checked/>';
-													}
-													?>
+                                                    <?php
+                                                    if ( ! self::is_special_cart_item( $cart_item ) ) {
+                                                        echo '<input type="checkbox" class="wpcss-checkbox" name="wpcss-products[]" value="' . esc_attr( $cart_item_key ) . '" checked/>';
+                                                    }
+                                                    ?>
                                                 </td>
-											<?php } ?>
+                                            <?php } ?>
                                             <td class="product-thumbnail">
-												<?php
-												$thumbnail = apply_filters( 'wpcss_cart_item_thumbnail', apply_filters( 'woocommerce_cart_item_thumbnail', $_product->get_image(), $cart_item, $cart_item_key ), $cart_item, $cart_item_key );
+                                                <?php
+                                                $thumbnail = apply_filters( 'wpcss_cart_item_thumbnail', apply_filters( 'woocommerce_cart_item_thumbnail', $_product->get_image(), $cart_item, $cart_item_key ), $cart_item, $cart_item_key );
 
-												if ( ! $product_permalink || $link === 'no' ) {
-													echo $thumbnail;
-												} else {
-													printf( '<a href="%s" ' . ( $link === 'yes_popup' ? 'class="woosq-btn" data-id="' . $product_id . '"' : '' ) . ' ' . ( $link === 'yes_blank' ? 'target="_blank"' : '' ) . '>%s</a>', esc_url( $product_permalink ), $thumbnail );
-												}
-												?>
+                                                if ( ! $product_permalink || $link === 'no' ) {
+                                                    echo $thumbnail;
+                                                } else {
+                                                    printf( '<a href="%s" ' . ( $link === 'yes_popup' ? 'class="woosq-btn" data-id="' . $product_id . '"' : '' ) . ' ' . ( $link === 'yes_blank' ? 'target="_blank"' : '' ) . '>%s</a>', esc_url( $product_permalink ), $thumbnail );
+                                                }
+                                                ?>
                                             </td>
                                             <td class="product-name"
                                                 data-title="<?php esc_attr_e( 'Product', 'wpc-share-cart' ); ?>">
-												<?php
-												if ( ! $product_permalink || $link === 'no' ) {
-													echo wp_kses_post( apply_filters( 'wpcss_cart_item_name', apply_filters( 'woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key ), $cart_item, $cart_item_key ) . '&nbsp;' );
-												} else {
-													echo wp_kses_post( apply_filters( 'wpcss_cart_item_name', apply_filters( 'woocommerce_cart_item_name', sprintf( '<a href="%s" ' . ( $link === 'yes_popup' ? 'class="woosq-btn" data-id="' . $product_id . '"' : '' ) . ' ' . ( $link === 'yes_blank' ? 'target="_blank"' : '' ) . '>%s</a>', esc_url( $product_permalink ), $_product->get_name() ), $cart_item, $cart_item_key ), $cart_item, $cart_item_key ) );
-												}
+                                                <?php
+                                                if ( ! $product_permalink || $link === 'no' ) {
+                                                    echo wp_kses_post( apply_filters( 'wpcss_cart_item_name', apply_filters( 'woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key ), $cart_item, $cart_item_key ) . '&nbsp;' );
+                                                } else {
+                                                    echo wp_kses_post( apply_filters( 'wpcss_cart_item_name', apply_filters( 'woocommerce_cart_item_name', sprintf( '<a href="%s" ' . ( $link === 'yes_popup' ? 'class="woosq-btn" data-id="' . $product_id . '"' : '' ) . ' ' . ( $link === 'yes_blank' ? 'target="_blank"' : '' ) . '>%s</a>', esc_url( $product_permalink ), $_product->get_name() ), $cart_item, $cart_item_key ), $cart_item, $cart_item_key ) );
+                                                }
 
-												do_action( 'woocommerce_after_cart_item_name', $cart_item, $cart_item_key );
-												do_action( 'wpcss_after_cart_item_name', $cart_item, $cart_item_key );
+                                                do_action( 'woocommerce_after_cart_item_name', $cart_item, $cart_item_key );
+                                                do_action( 'wpcss_after_cart_item_name', $cart_item, $cart_item_key );
 
-												// Meta data
-												echo wc_get_formatted_cart_item_data( $cart_item );
+                                                // Meta data
+                                                echo wc_get_formatted_cart_item_data( $cart_item );
 
-												// Backorder notification
-												if ( $_product->backorders_require_notification() && $_product->is_on_backorder( $cart_item['quantity'] ) ) {
-													echo wp_kses_post( apply_filters( 'woocommerce_cart_item_backorder_notification', '<p class="backorder_notification">' . esc_html__( 'Available on backorder', 'wpc-share-cart' ) . '</p>', $product_id ) );
-												}
+                                                // Backorder notification
+                                                if ( $_product->backorders_require_notification() && $_product->is_on_backorder( $cart_item['quantity'] ) ) {
+                                                    echo wp_kses_post( apply_filters( 'woocommerce_cart_item_backorder_notification', '<p class="backorder_notification">' . esc_html__( 'Available on backorder', 'wpc-share-cart' ) . '</p>', $product_id ) );
+                                                }
 
-												// Note
-												if ( ! empty( $cart_item['wpcss_note'] ) ) {
-													echo '<div class="wpcss-product-note"><span class="wpcss-product-note-inner">' . self::localization( 'note', esc_html__( 'Note: ', 'wpc-share-cart' ) ) . wp_kses_post( $cart_item['wpcss_note'] ) . '</span></div>';
-												}
-												?>
+                                                // Note
+                                                if ( ! empty( $cart_item['wpcss_note'] ) ) {
+                                                    echo '<div class="wpcss-product-note"><span class="wpcss-product-note-inner">' . self::localization( 'note', esc_html__( 'Note: ', 'wpc-share-cart' ) ) . wp_kses_post( $cart_item['wpcss_note'] ) . '</span></div>';
+                                                }
+                                                ?>
                                             </td>
                                             <td class="product-price"
                                                 data-title="<?php esc_attr_e( 'Price', 'wpc-share-cart' ); ?>">
-												<?php echo apply_filters( 'wpcss_cart_item_price', ( ! empty( $cart_item['wpcss_price'] ) ? wc_price( $cart_item['wpcss_price'] ) : apply_filters( 'woocommerce_cart_item_price', WC()->cart->get_product_price( $_product ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
+                                                <?php echo apply_filters( 'wpcss_cart_item_price', ( ! empty( $cart_item['wpcss_price'] ) ? wc_price( $cart_item['wpcss_price'] ) : apply_filters( 'woocommerce_cart_item_price', WC()->cart->get_product_price( $_product ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
                                             </td>
                                             <td class="product-quantity"
                                                 data-title="<?php esc_attr_e( 'Quantity', 'wpc-share-cart' ); ?>">
-												<?php echo apply_filters( 'wpcss_cart_item_quantity', $cart_item['quantity'], $cart_item, $cart_item_key ); ?>
+                                                <?php echo apply_filters( 'wpcss_cart_item_quantity', $cart_item['quantity'], $cart_item, $cart_item_key ); ?>
                                             </td>
                                             <td class="product-subtotal"
                                                 data-title="<?php esc_attr_e( 'Subtotal', 'wpc-share-cart' ); ?>">
-												<?php echo apply_filters( 'wpcss_cart_item_subtotal', ( ! empty( $cart_item['wpcss_subtotal'] ) ? wc_price( $cart_item['wpcss_subtotal'] ) : apply_filters( 'woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal( $_product, $cart_item['quantity'] ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
+                                                <?php echo apply_filters( 'wpcss_cart_item_subtotal', ( ! empty( $cart_item['wpcss_subtotal'] ) ? wc_price( $cart_item['wpcss_subtotal'] ) : apply_filters( 'woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal( $_product, $cart_item['quantity'] ), $cart_item, $cart_item_key ) ), $cart_item, $cart_item_key ); ?>
                                             </td>
                                         </tr>
-										<?php
-									}
-								} ?>
+                                        <?php
+                                    }
+                                } ?>
                                 <tr>
-									<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
+                                    <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                         <td class="product-checkbox">
-											<?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
+                                            <?php echo apply_filters( 'wpcss_checkbox_all', '<label><input type="checkbox" class="wpcss-checkbox-all" checked/></label>' ); ?>
                                         </td>
-									<?php } ?>
+                                    <?php } ?>
                                     <td colspan="5">
                                         <div class="wpcss-actions">
-											<?php wp_nonce_field( 'wpcss_add_products', 'wpcss-security' ); ?>
+                                            <?php wp_nonce_field( 'wpcss_add_products', 'wpcss-security' ); ?>
                                             <input type="hidden" name="wpcss-key"
                                                    value="<?php echo esc_attr( $key ); ?>"/>
-											<?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
+                                            <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                                 <button type="submit" class="button wpcss-add-selected"
                                                         name="wpcss-action"
                                                         value="selected"><?php echo self::localization( 'selected', esc_html__( 'Add selected products to cart', 'wpc-share-cart' ) ); ?></button>
-											<?php }
+                                            <?php }
 
-											if ( self::get_setting( 'add_all', 'yes' ) === 'yes' ) { ?>
+                                            if ( self::get_setting( 'add_all', 'yes' ) === 'yes' ) { ?>
                                                 <button type="submit" class="button wpcss-add-all" name="wpcss-action"
                                                         value="all"><?php echo self::localization( 'restore', esc_html__( 'Restore cart', 'wpc-share-cart' ) ); ?></button>
-											<?php } ?>
+                                            <?php } ?>
                                         </div>
                                     </td>
                                 </tr>
                                 </tbody>
                             </table>
                         </form>
-						<?php if ( wc_string_to_bool( $attrs['share'] ) ) { ?>
+                        <?php if ( wc_string_to_bool( $attrs['share'] ) ) { ?>
                             <div class="wpcss-share">
-								<?php
-								echo self::share_links( $url );
+                                <?php
+                                echo self::share_links( $url );
 
-								if ( self::get_setting( 'page_copy', 'yes' ) === 'yes' ) {
-									echo '<div class="wpcss-copy-link">';
-									echo '<span class="wpcss-copy-label">' . self::localization( 'share_link', esc_html__( 'Share link:', 'wpc-share-cart' ) ) . '</span>';
-									echo '<span class="wpcss-copy-url"><input id="wpcss_copy_url" type="url" value="' . $url_raw . '" readonly/></span>';
-									echo '<span class="wpcss-copy-btn"><input id="wpcss_copy_btn" type="button" value="' . self::localization( 'copy_button', esc_html__( 'Copy', 'wpc-share-cart' ) ) . '"/></span>';
-									echo '</div>';
-								}
-								?>
+                                if ( self::get_setting( 'page_copy', 'yes' ) === 'yes' ) {
+                                    echo '<div class="wpcss-copy-link">';
+                                    echo '<span class="wpcss-copy-label">' . self::localization( 'share_link', esc_html__( 'Share link:', 'wpc-share-cart' ) ) . '</span>';
+                                    echo '<span class="wpcss-copy-url"><input id="wpcss_copy_url" type="url" value="' . $url_raw . '" readonly/></span>';
+                                    echo '<span class="wpcss-copy-btn"><input id="wpcss_copy_btn" type="button" value="' . self::localization( 'copy_button', esc_html__( 'Copy', 'wpc-share-cart' ) ) . '"/></span>';
+                                    echo '</div>';
+                                }
+                                ?>
                             </div>
-						<?php } ?>
+                        <?php } ?>
                     </div>
-					<?php
-					return apply_filters( 'wpcss_shortcode_list', ob_get_clean(), $attrs );
-				}
+                    <?php
+                    return apply_filters( 'wpcss_shortcode_list', ob_get_clean(), $attrs );
+                }
 
-				function admin_enqueue_scripts( $hook ) {
-					if ( str_contains( $hook, 'wpcss' ) ) {
-						wp_enqueue_style( 'wpcss-backend', WPCSS_URI . 'assets/css/backend.css', [], WPCSS_VERSION );
-						wp_enqueue_script( 'wpcss-backend', WPCSS_URI . 'assets/js/backend.js', [
-							'jquery',
-							'jquery-ui-dialog',
-							'jquery-ui-sortable',
-						], WPCSS_VERSION, true );
-						wp_localize_script( 'wpcss-backend', 'wpcss_vars', [
-								'nonce' => wp_create_nonce( 'wpcss-security' )
-							]
-						);
-					}
-				}
+                function admin_enqueue_scripts( $hook ) {
+                    if ( str_contains( $hook, 'wpcss' ) ) {
+                        wp_enqueue_style( 'wpcss-backend', WPCSS_URI . 'assets/css/backend.css', [], WPCSS_VERSION );
+                        wp_enqueue_script( 'wpcss-backend', WPCSS_URI . 'assets/js/backend.js', [
+                                'jquery',
+                                'jquery-ui-dialog',
+                                'jquery-ui-sortable',
+                        ], WPCSS_VERSION, true );
+                        wp_localize_script( 'wpcss-backend', 'wpcss_vars', [
+                                        'nonce' => wp_create_nonce( 'wpcss-security' )
+                                ]
+                        );
+                    }
+                }
 
-				function admin_footer() {
-					?>
+                function admin_footer() {
+                    ?>
                     <div class="wpcss-dialog" id="wpcss_dialog" style="display: none"
                          title="<?php esc_html_e( 'Shared Cart', 'wpc-share-cart' ); ?>"></div>
-					<?php
-				}
+                    <?php
+                }
 
-				function register_settings() {
-					// settings
-					register_setting( 'wpcss_settings', 'wpcss_settings' );
+                function register_settings() {
+                    // settings
+                    register_setting( 'wpcss_settings', 'wpcss_settings' );
 
-					// localization
-					register_setting( 'wpcss_localization', 'wpcss_localization' );
-				}
+                    // localization
+                    register_setting( 'wpcss_localization', 'wpcss_localization' );
+                }
 
-				function admin_menu() {
-					add_submenu_page( 'wpclever', 'WPC Share Cart', 'Share Cart', 'manage_options', 'wpclever-wpcss', [
-						$this,
-						'admin_menu_content'
-					] );
-				}
+                function admin_menu() {
+                    add_submenu_page( 'wpclever', 'WPC Share Cart', 'Share Cart', 'manage_options', 'wpclever-wpcss', [
+                            $this,
+                            'admin_menu_content'
+                    ] );
+                }
 
-				function admin_menu_content() {
-					add_thickbox();
-					$active_tab = sanitize_key( $_GET['tab'] ?? 'settings' );
-					?>
+                function admin_menu_content() {
+                    add_thickbox();
+                    $active_tab = sanitize_key( $_GET['tab'] ?? 'settings' );
+                    ?>
                     <div class="wpclever_settings_page wrap">
                         <div class="wpclever_settings_page_header">
                             <a class="wpclever_settings_page_header_logo" href="https://wpclever.net/"
@@ -504,7 +504,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                 <div class="wpclever_settings_page_title"><?php echo esc_html( 'WPC Share Cart ' . WPCSS_VERSION ) . ( defined( 'WPCSS_PREMIUM' ) ? '<span class="premium" style="display: none">' . esc_html__( 'Premium', 'wpc-share-cart' ) . '</span>' : '' ); ?></div>
                                 <div class="wpclever_settings_page_desc about-text">
                                     <p>
-										<?php printf( /* translators: stars */ esc_html__( 'Thank you for using our plugin! If you are satisfied, please reward it a full five-star %s rating.', 'wpc-share-cart' ), '<span style="color:#ffb900">&#9733;&#9733;&#9733;&#9733;&#9733;</span>' ); ?>
+                                        <?php printf( /* translators: stars */ esc_html__( 'Thank you for using our plugin! If you are satisfied, please reward it a full five-star %s rating.', 'wpc-share-cart' ), '<span style="color:#ffb900">&#9733;&#9733;&#9733;&#9733;&#9733;</span>' ); ?>
                                         <br/>
                                         <a href="<?php echo esc_url( WPCSS_REVIEWS ); ?>"
                                            target="_blank"><?php esc_html_e( 'Reviews', 'wpc-share-cart' ); ?></a> |
@@ -517,58 +517,58 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                         </div>
                         <h2></h2>
-						<?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] ) { ?>
+                        <?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] ) { ?>
                             <div class="notice notice-success is-dismissible">
                                 <p><?php esc_html_e( 'Settings updated.', 'wpc-share-cart' ); ?></p>
                             </div>
-						<?php } ?>
+                        <?php } ?>
                         <div class="wpclever_settings_page_nav">
                             <h2 class="nav-tab-wrapper">
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=settings' ) ); ?>"
                                    class="<?php echo esc_attr( $active_tab === 'settings' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
-									<?php esc_html_e( 'Settings', 'wpc-share-cart' ); ?>
+                                    <?php esc_html_e( 'Settings', 'wpc-share-cart' ); ?>
                                 </a>
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=localization' ) ); ?>"
                                    class="<?php echo esc_attr( $active_tab === 'localization' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
-									<?php esc_html_e( 'Localization', 'wpc-share-cart' ); ?>
+                                    <?php esc_html_e( 'Localization', 'wpc-share-cart' ); ?>
                                 </a>
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=carts' ) ); ?>"
                                    class="<?php echo esc_attr( $active_tab === 'carts' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>">
-									<?php esc_html_e( 'Shared Carts', 'wpc-share-cart' ); ?>
+                                    <?php esc_html_e( 'Shared Carts', 'wpc-share-cart' ); ?>
                                 </a>
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=premium' ) ); ?>"
                                    class="<?php echo esc_attr( $active_tab === 'premium' ? 'nav-tab nav-tab-active' : 'nav-tab' ); ?>"
                                    style="color: #c9356e">
-									<?php esc_html_e( 'Premium Version', 'wpc-share-cart' ); ?>
+                                    <?php esc_html_e( 'Premium Version', 'wpc-share-cart' ); ?>
                                 </a>
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wpclever-kit' ) ); ?>"
                                    class="nav-tab">
-									<?php esc_html_e( 'Essential Kit', 'wpc-share-cart' ); ?>
+                                    <?php esc_html_e( 'Essential Kit', 'wpc-share-cart' ); ?>
                                 </a>
                             </h2>
                         </div>
                         <div class="wpclever_settings_page_content">
-							<?php if ( $active_tab === 'settings' ) {
-								if ( isset( $_REQUEST['settings-updated'] ) && $_REQUEST['settings-updated'] === 'true' ) {
-									flush_rewrite_rules();
-								}
+                            <?php if ( $active_tab === 'settings' ) {
+                                if ( isset( $_REQUEST['settings-updated'] ) && $_REQUEST['settings-updated'] === 'true' ) {
+                                    flush_rewrite_rules();
+                                }
 
-								$need_login   = self::get_setting( 'need_login', 'no' );
-								$link         = self::get_setting( 'link', 'yes' );
-								$add_selected = self::get_setting( 'add_selected', 'yes' );
-								$add_all      = self::get_setting( 'add_all', 'yes' );
-								$keep_data    = self::get_setting( 'keep_data', 'yes' );
-								$redirect     = self::get_setting( 'redirect', 'yes' );
-								$page_share   = self::get_setting( 'page_share', 'yes' );
-								$page_icon    = self::get_setting( 'page_icon', 'yes' );
-								$page_copy    = self::get_setting( 'page_copy', 'yes' );
-								$page_items   = (array) self::get_setting( 'page_items', [] );
-								?>
+                                $need_login   = self::get_setting( 'need_login', 'no' );
+                                $link         = self::get_setting( 'link', 'yes' );
+                                $add_selected = self::get_setting( 'add_selected', 'yes' );
+                                $add_all      = self::get_setting( 'add_all', 'yes' );
+                                $keep_data    = self::get_setting( 'keep_data', 'yes' );
+                                $redirect     = self::get_setting( 'redirect', 'yes' );
+                                $page_share   = self::get_setting( 'page_share', 'yes' );
+                                $page_icon    = self::get_setting( 'page_icon', 'yes' );
+                                $page_copy    = self::get_setting( 'page_copy', 'yes' );
+                                $page_items   = (array) self::get_setting( 'page_items', [] );
+                                ?>
                                 <form method="post" action="options.php">
                                     <table class="form-table">
                                         <tr class="heading">
                                             <th colspan="2">
-												<?php esc_html_e( 'General', 'wpc-share-cart' ); ?>
+                                                <?php esc_html_e( 'General', 'wpc-share-cart' ); ?>
                                             </th>
                                         </tr>
                                         <tr>
@@ -584,12 +584,12 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         <tr>
                                             <th scope="row"><?php esc_html_e( 'Share page', 'wpc-share-cart' ); ?></th>
                                             <td>
-												<?php wp_dropdown_pages( [
-													'selected'          => self::get_setting( 'page_id', '' ),
-													'name'              => 'wpcss_settings[page_id]',
-													'show_option_none'  => esc_html__( 'Choose a page', 'wpc-share-cart' ),
-													'option_none_value' => '',
-												] ); ?>
+                                                <?php wp_dropdown_pages( [
+                                                        'selected'          => self::get_setting( 'page_id', '' ),
+                                                        'name'              => 'wpcss_settings[page_id]',
+                                                        'show_option_none'  => esc_html__( 'Choose a page', 'wpc-share-cart' ),
+                                                        'option_none_value' => '',
+                                                ] ); ?>
                                                 <span class="description"><?php printf( /* translators: shortcode */ esc_html__( 'Add shortcode %s to display the cart contents on a page.', 'wpc-share-cart' ), '<code>[wpcss_list]</code>' ); ?></span>
                                             </td>
                                         </tr>
@@ -689,18 +689,18 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         </tr>
                                         <tr class="submit">
                                             <th colspan="2">
-												<?php settings_fields( 'wpcss_settings' ); ?><?php submit_button(); ?>
+                                                <?php settings_fields( 'wpcss_settings' ); ?><?php submit_button(); ?>
                                             </th>
                                         </tr>
                                     </table>
                                 </form>
-							<?php } elseif ( $active_tab === 'localization' ) { ?>
+                            <?php } elseif ( $active_tab === 'localization' ) { ?>
                                 <form method="post" action="options.php">
                                     <table class="form-table">
                                         <tr class="heading">
                                             <th scope="row"><?php esc_html_e( 'General', 'wpc-share-cart' ); ?></th>
                                             <td>
-												<?php esc_html_e( 'Leave blank to use the default text and its equivalent translation in multiple languages.', 'wpc-share-cart' ); ?>
+                                                <?php esc_html_e( 'Leave blank to use the default text and its equivalent translation in multiple languages.', 'wpc-share-cart' ); ?>
                                             </td>
                                         </tr>
                                         <tr>
@@ -777,7 +777,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                            name="wpcss_localization[copy_message]"
                                                            value="<?php echo esc_attr( self::localization( 'copy_message' ) ); ?>"
                                                            placeholder="<?php /* translators: link */
-													       esc_attr_e( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ); ?>"/>
+                                                           esc_attr_e( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -864,28 +864,28 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         </tr>
                                         <tr class="submit">
                                             <th colspan="2">
-												<?php settings_fields( 'wpcss_localization' ); ?><?php submit_button(); ?>
+                                                <?php settings_fields( 'wpcss_localization' ); ?><?php submit_button(); ?>
                                             </th>
                                         </tr>
                                     </table>
                                 </form>
-							<?php } elseif ( $active_tab === 'carts' ) {
-								global $wpdb;
-								$per_page = 20;
-								$search   = sanitize_text_field( $_GET['s'] ?? '' );
-								$paged    = absint( $_GET['paged'] ?? 1 );
-								$offset   = ( $paged - 1 ) * $per_page;
+                            <?php } elseif ( $active_tab === 'carts' ) {
+                                global $wpdb;
+                                $per_page = 20;
+                                $search   = sanitize_text_field( $_GET['s'] ?? '' );
+                                $paged    = absint( $_GET['paged'] ?? 1 );
+                                $offset   = ( $paged - 1 ) * $per_page;
 
-								if ( empty( $search ) ) {
-									$total = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s', '%wpcss_cart_%' ) );
-									$carts = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s ORDER BY `option_id` DESC limit ' . $per_page . ' offset ' . $offset, '%wpcss_cart_%' ) );
-								} else {
-									$total = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s', '%wpcss_cart_' . $wpdb->esc_like( $search ) . '%' ) );
-									$carts = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s ORDER BY `option_id` DESC limit ' . $per_page . ' offset ' . $offset, '%wpcss_cart_' . $wpdb->esc_like( $search ) . '%' ) );
-								}
+                                if ( empty( $search ) ) {
+                                    $total = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s', '%wpcss_cart_%' ) );
+                                    $carts = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s ORDER BY `option_id` DESC limit ' . $per_page . ' offset ' . $offset, '%wpcss_cart_%' ) );
+                                } else {
+                                    $total = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s', '%wpcss_cart_' . $wpdb->esc_like( $search ) . '%' ) );
+                                    $carts = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM `' . $wpdb->prefix . 'options` WHERE `option_name` LIKE %s ORDER BY `option_id` DESC limit ' . $per_page . ' offset ' . $offset, '%wpcss_cart_' . $wpdb->esc_like( $search ) . '%' ) );
+                                }
 
-								$pages = ceil( $total / $per_page );
-								?>
+                                $pages = ceil( $total / $per_page );
+                                ?>
                                 <table class="form-table">
                                     <tr>
                                         <td>
@@ -911,15 +911,15 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                     </div>
                                                     <div class="tablenav-pages">
                                                         <div>
-															<?php printf( /* translators: counter */ esc_html__( '%1$d carts in %2$d pages', 'wpc-share-cart' ), $total, $pages ); ?>
+                                                            <?php printf( /* translators: counter */ esc_html__( '%1$d carts in %2$d pages', 'wpc-share-cart' ), $total, $pages ); ?>
 
                                                             <label>
                                                                 <select onchange="if (this.value) {window.location.href=this.value}">
-																	<?php
-																	for ( $i = 1; $i <= $pages; $i ++ ) {
-																		echo '<option value="' . admin_url( 'admin.php?page=wpclever-wpcss&tab=carts&paged=' . $i ) . '" ' . ( $paged == $i ? 'selected' : '' ) . '>' . $i . '</option>';
-																	}
-																	?>
+                                                                    <?php
+                                                                    for ( $i = 1; $i <= $pages; $i ++ ) {
+                                                                        echo '<option value="' . admin_url( 'admin.php?page=wpclever-wpcss&tab=carts&paged=' . $i ) . '" ' . ( $paged == $i ? 'selected' : '' ) . '>' . $i . '</option>';
+                                                                    }
+                                                                    ?>
                                                                 </select> </label>
                                                         </div>
                                                     </div>
@@ -929,55 +929,55 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                     <thead>
                                                     <tr>
                                                         <td style="width: 60px">
-															<?php esc_html_e( 'Key', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Key', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Customer', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Customer', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Time', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Time', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Actions', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Actions', 'wpc-share-cart' ); ?>
                                                         </td>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
-													<?php
-													if ( ! empty( $carts ) ) {
-														foreach ( $carts as $cart ) {
-															$cart_key  = str_replace( 'wpcss_cart_', '', $cart->option_name );
-															$cart_data = get_option( $cart->option_name );
+                                                    <?php
+                                                    if ( ! empty( $carts ) ) {
+                                                        foreach ( $carts as $cart ) {
+                                                            $cart_key  = str_replace( 'wpcss_cart_', '', $cart->option_name );
+                                                            $cart_data = get_option( $cart->option_name );
 
-															echo '<tr class="wpcss-shared-cart" data-key="' . esc_attr( $cart_key ) . '">';
-															echo '<td class="wpcss-shared-cart-key">' . esc_html( $cart_key ) . '</td>';
-															echo '<td class="wpcss-shared-cart-customer">';
+                                                            echo '<tr class="wpcss-shared-cart" data-key="' . esc_attr( $cart_key ) . '">';
+                                                            echo '<td class="wpcss-shared-cart-key">' . esc_html( $cart_key ) . '</td>';
+                                                            echo '<td class="wpcss-shared-cart-customer">';
 
-															if ( isset( $cart_data['customer'] ) && is_a( $cart_data['customer'], 'WC_Customer' ) ) {
-																echo $cart_data['customer']->get_username() . '<br/><span style="opacity: .5">' . $cart_data['customer']->get_email() . '</span>';
-															}
+                                                            if ( isset( $cart_data['customer'] ) && is_a( $cart_data['customer'], 'WC_Customer' ) ) {
+                                                                echo $cart_data['customer']->get_username() . '<br/><span style="opacity: .5">' . $cart_data['customer']->get_email() . '</span>';
+                                                            }
 
-															echo '</td>';
-															echo '<td class="wpcss-shared-cart-time">' . wp_date( 'm/d/Y H:i:s', $cart_data['time'] ) . '</td>';
-															echo '<td class="wpcss-shared-cart-actions"><a class="wpcss-shared-cart-view" href="' . esc_url( self::get_url( $cart_key ) ) . '" target="_blank">view <span class="dashicons dashicons-external"></span></a> | <a class="wpcss-shared-cart-edit wpcss-edit" href="#">edit</a> | <a class="wpcss-shared-cart-delete wpcss-delete" href="#" style="color: #b32d2e">delete</a></td>';
-															echo '</tr>';
-														}
-													}
-													?>
+                                                            echo '</td>';
+                                                            echo '<td class="wpcss-shared-cart-time">' . wp_date( 'm/d/Y H:i:s', $cart_data['time'] ) . '</td>';
+                                                            echo '<td class="wpcss-shared-cart-actions"><a class="wpcss-shared-cart-view" href="' . esc_url( self::get_url( $cart_key ) ) . '" target="_blank">view <span class="dashicons dashicons-external"></span></a> | <a class="wpcss-shared-cart-edit wpcss-edit" href="#">edit</a> | <a class="wpcss-shared-cart-delete wpcss-delete" href="#" style="color: #b32d2e">delete</a></td>';
+                                                            echo '</tr>';
+                                                        }
+                                                    }
+                                                    ?>
                                                     </tbody>
                                                     <tfoot>
                                                     <tr>
                                                         <td style="width: 60px">
-															<?php esc_html_e( 'Key', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Key', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Customer', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Customer', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Time', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Time', 'wpc-share-cart' ); ?>
                                                         </td>
                                                         <td>
-															<?php esc_html_e( 'Actions', 'wpc-share-cart' ); ?>
+                                                            <?php esc_html_e( 'Actions', 'wpc-share-cart' ); ?>
                                                         </td>
                                                     </tr>
                                                     </tfoot>
@@ -988,15 +988,15 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                     </div>
                                                     <div class="tablenav-pages">
                                                         <div>
-															<?php printf( /* translators: counter */ esc_html__( '%1$d carts in %2$d pages', 'wpc-share-cart' ), $total, $pages ); ?>
+                                                            <?php printf( /* translators: counter */ esc_html__( '%1$d carts in %2$d pages', 'wpc-share-cart' ), $total, $pages ); ?>
 
                                                             <label>
                                                                 <select onchange="if (this.value) {window.location.href=this.value}">
-																	<?php
-																	for ( $i = 1; $i <= $pages; $i ++ ) {
-																		echo '<option value="' . admin_url( 'admin.php?page=wpclever-wpcss&tab=carts&paged=' . $i ) . '" ' . ( $paged == $i ? 'selected' : '' ) . '>' . $i . '</option>';
-																	}
-																	?>
+                                                                    <?php
+                                                                    for ( $i = 1; $i <= $pages; $i ++ ) {
+                                                                        echo '<option value="' . admin_url( 'admin.php?page=wpclever-wpcss&tab=carts&paged=' . $i ) . '" ' . ( $paged == $i ? 'selected' : '' ) . '>' . $i . '</option>';
+                                                                    }
+                                                                    ?>
                                                                 </select> </label>
                                                         </div>
                                                     </div>
@@ -1006,7 +1006,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         </td>
                                     </tr>
                                 </table>
-							<?php } elseif ( $active_tab === 'premium' ) { ?>
+                            <?php } elseif ( $active_tab === 'premium' ) { ?>
                                 <div class="wpclever_settings_page_content_text">
                                     <p>Get the Premium Version just $29!
                                         <a href="https://wpclever.net/downloads/wpc-share-cart/?utm_source=pro&utm_medium=wpcss&utm_campaign=wporg"
@@ -1023,7 +1023,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         <li>- Get the lifetime update & premium support.</li>
                                     </ul>
                                 </div>
-							<?php } ?>
+                            <?php } ?>
                         </div><!-- /.wpclever_settings_page_content -->
                         <div class="wpclever_settings_page_suggestion">
                             <div class="wpclever_settings_page_suggestion_label">
@@ -1046,118 +1046,118 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                         </div>
                     </div>
-					<?php
-				}
+                    <?php
+                }
 
-				function enqueue_scripts() {
-					// feather icons
-					wp_enqueue_style( 'wpcss-feather', WPCSS_URI . 'assets/libs/feather/feather.css' );
+                function enqueue_scripts() {
+                    // feather icons
+                    wp_enqueue_style( 'wpcss-feather', WPCSS_URI . 'assets/libs/feather/feather.css' );
 
-					// main css & js
-					wp_enqueue_style( 'wpcss-frontend', WPCSS_URI . 'assets/css/frontend.css', [], WPCSS_VERSION );
-					wp_enqueue_script( 'wpcss-frontend', WPCSS_URI . 'assets/js/frontend.js', [ 'jquery' ], WPCSS_VERSION, true );
-					wp_localize_script( 'wpcss-frontend', 'wpcss_vars', apply_filters( 'wpcss_vars', [
-							'wc_ajax_url' => WC_AJAX::get_endpoint( '%%endpoint%%' ),
-							'nonce'       => wp_create_nonce( 'wpcss-security' ),
-							'copied_text' => self::localization( 'copy_message', /* translators: link */ esc_html__( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ) ),
-						] )
-					);
-				}
+                    // main css & js
+                    wp_enqueue_style( 'wpcss-frontend', WPCSS_URI . 'assets/css/frontend.css', [], WPCSS_VERSION );
+                    wp_enqueue_script( 'wpcss-frontend', WPCSS_URI . 'assets/js/frontend.js', [ 'jquery' ], WPCSS_VERSION, true );
+                    wp_localize_script( 'wpcss-frontend', 'wpcss_vars', apply_filters( 'wpcss_vars', [
+                                    'wc_ajax_url' => WC_AJAX::get_endpoint( '%%endpoint%%' ),
+                                    'nonce'       => wp_create_nonce( 'wpcss-security' ),
+                                    'copied_text' => self::localization( 'copy_message', /* translators: link */ esc_html__( 'Share link %s was copied to clipboard!', 'wpc-share-cart' ) ),
+                            ] )
+                    );
+                }
 
-				function action_links( $links, $file ) {
-					static $plugin;
+                function action_links( $links, $file ) {
+                    static $plugin;
 
-					if ( ! isset( $plugin ) ) {
-						$plugin = plugin_basename( __FILE__ );
-					}
+                    if ( ! isset( $plugin ) ) {
+                        $plugin = plugin_basename( __FILE__ );
+                    }
 
-					if ( $plugin === $file ) {
-						$settings             = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=settings' ) ) . '">' . esc_html__( 'Settings', 'wpc-share-cart' ) . '</a>';
-						$carts                = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=carts' ) ) . '">' . esc_html__( 'Shared Carts', 'wpc-share-cart' ) . '</a>';
-						$links['wpc-premium'] = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=premium' ) ) . '">' . esc_html__( 'Premium Version', 'wpc-share-cart' ) . '</a>';
-						array_unshift( $links, $settings, $carts );
-					}
+                    if ( $plugin === $file ) {
+                        $settings             = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=settings' ) ) . '">' . esc_html__( 'Settings', 'wpc-share-cart' ) . '</a>';
+                        $carts                = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=carts' ) ) . '">' . esc_html__( 'Shared Carts', 'wpc-share-cart' ) . '</a>';
+                        $links['wpc-premium'] = '<a href="' . esc_url( admin_url( 'admin.php?page=wpclever-wpcss&tab=premium' ) ) . '">' . esc_html__( 'Premium Version', 'wpc-share-cart' ) . '</a>';
+                        array_unshift( $links, $settings, $carts );
+                    }
 
-					return (array) $links;
-				}
+                    return (array) $links;
+                }
 
-				function row_meta( $links, $file ) {
-					static $plugin;
+                function row_meta( $links, $file ) {
+                    static $plugin;
 
-					if ( ! isset( $plugin ) ) {
-						$plugin = plugin_basename( __FILE__ );
-					}
+                    if ( ! isset( $plugin ) ) {
+                        $plugin = plugin_basename( __FILE__ );
+                    }
 
-					if ( $plugin === $file ) {
-						$row_meta = [
-							'support' => '<a href="' . esc_url( WPCSS_DISCUSSION ) . '" target="_blank">' . esc_html__( 'Community support', 'wpc-share-cart' ) . '</a>',
-						];
+                    if ( $plugin === $file ) {
+                        $row_meta = [
+                                'support' => '<a href="' . esc_url( WPCSS_DISCUSSION ) . '" target="_blank">' . esc_html__( 'Community support', 'wpc-share-cart' ) . '</a>',
+                        ];
 
-						return array_merge( $links, $row_meta );
-					}
+                        return array_merge( $links, $row_meta );
+                    }
 
-					return (array) $links;
-				}
+                    return (array) $links;
+                }
 
-				function share_button() {
-					echo do_shortcode( '[wpcss_btn]' );
-				}
+                function share_button() {
+                    echo do_shortcode( '[wpcss_btn]' );
+                }
 
-				function ajax_share() {
-					if ( ! apply_filters( 'wpcss_disable_security_check', false, 'share' ) ) {
-						if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
-							die( 'Permissions check failed!' );
-						}
-					}
+                function ajax_share() {
+                    if ( ! apply_filters( 'wpcss_disable_security_check', false, 'share' ) ) {
+                        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
+                            die( 'Permissions check failed!' );
+                        }
+                    }
 
-					if ( self::get_setting( 'need_login', 'no' ) === 'yes' && ! is_user_logged_in() ) {
-						echo '<div class="wpcss-popup-text">' . self::localization( 'need_login', esc_html__( 'Please login to be able to share your shopping cart.', 'wpc-share-cart' ) ) . '</div>';
-						wp_die();
-					}
+                    if ( self::get_setting( 'need_login', 'no' ) === 'yes' && ! is_user_logged_in() ) {
+                        echo '<div class="wpcss-popup-text">' . self::localization( 'need_login', esc_html__( 'Please login to be able to share your shopping cart.', 'wpc-share-cart' ) ) . '</div>';
+                        wp_die();
+                    }
 
-					$url  = '';
-					$hash = sanitize_text_field( $_POST['hash'] );
+                    $url  = '';
+                    $hash = sanitize_text_field( $_POST['hash'] );
 
-					if ( $key = get_option( 'wpcss_hash_' . $hash ) ) {
-						$url = self::get_url( $key );
-					} else {
-						$key  = self::generate_key();
-						$cart = WC()->cart->get_cart();
+                    if ( $key = get_option( 'wpcss_hash_' . $hash ) ) {
+                        $url = self::get_url( $key );
+                    } else {
+                        $key  = self::generate_key();
+                        $cart = WC()->cart->get_cart();
 
-						if ( ! empty( $cart ) ) {
-							$cart_data = [
-								'cart'     => $cart,
-								'customer' => WC()->cart->get_customer(),
-								'coupons'  => WC()->cart->get_applied_coupons(),
-								'time'     => time(),
-							];
+                        if ( ! empty( $cart ) ) {
+                            $cart_data = [
+                                    'cart'     => $cart,
+                                    'customer' => WC()->cart->get_customer(),
+                                    'coupons'  => WC()->cart->get_applied_coupons(),
+                                    'time'     => time(),
+                            ];
 
-							update_option( 'wpcss_cart_' . $key, $cart_data, false );
-							update_option( 'wpcss_hash_' . $hash, $key, false );
-							$url = self::get_url( $key );
-						}
-					}
+                            update_option( 'wpcss_cart_' . $key, $cart_data, false );
+                            update_option( 'wpcss_hash_' . $hash, $key, false );
+                            $url = self::get_url( $key );
+                        }
+                    }
 
-					ob_start();
-					?>
+                    ob_start();
+                    ?>
                     <div class="wpcss-popup-text">
-						<?php echo self::localization( 'message', esc_html__( 'Share link was generated! Now you can copy below link to share.', 'wpc-share-cart' ) ); ?>
+                        <?php echo self::localization( 'message', esc_html__( 'Share link was generated! Now you can copy below link to share.', 'wpc-share-cart' ) ); ?>
                     </div>
                     <div class="wpcss-popup-link">
                         <label for="wpcss_copy_url"></label><input type="url" id="wpcss_copy_url"
                                                                    value="<?php echo esc_url( $url ); ?>" readonly/>
                     </div>
-					<?php
-					echo self::share_links( urlencode( $url ) );
-					echo apply_filters( 'wpcss_popup_html', ob_get_clean(), $url );
+                    <?php
+                    echo self::share_links( urlencode( $url ) );
+                    echo apply_filters( 'wpcss_popup_html', ob_get_clean(), $url );
 
-					wp_die();
-				}
+                    wp_die();
+                }
 
-				function footer() {
-					?>
+                function footer() {
+                    ?>
                     <div class="wpcss-footer-btn" style="display: none">
-						<?php echo do_shortcode( '[wpcss_btn]' ); ?>
+                        <?php echo do_shortcode( '[wpcss_btn]' ); ?>
                     </div>
                     <div class="wpcss-area">
                         <div class="wpcss-popup">
@@ -1167,73 +1167,73 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                         </div>
                     </div>
-					<?php
-				}
+                    <?php
+                }
 
-				function get_page_id() {
-					if ( self::get_setting( 'page_id' ) ) {
-						return absint( self::get_setting( 'page_id' ) );
-					}
+                function get_page_id() {
+                    if ( self::get_setting( 'page_id' ) ) {
+                        return absint( self::get_setting( 'page_id' ) );
+                    }
 
-					return false;
-				}
+                    return false;
+                }
 
-				function generate_key() {
-					$key         = '';
-					$key_str     = apply_filters( 'wpcss_key_characters', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' );
-					$key_str_len = strlen( $key_str );
+                function generate_key() {
+                    $key         = '';
+                    $key_str     = apply_filters( 'wpcss_key_characters', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' );
+                    $key_str_len = strlen( $key_str );
 
-					for ( $i = 0; $i < apply_filters( 'wpcss_key_length', 6 ); $i ++ ) {
-						$key .= $key_str[ random_int( 0, $key_str_len - 1 ) ];
-					}
+                    for ( $i = 0; $i < apply_filters( 'wpcss_key_length', 6 ); $i ++ ) {
+                        $key .= $key_str[ random_int( 0, $key_str_len - 1 ) ];
+                    }
 
-					return apply_filters( 'wpcss_generate_key', $key );
-				}
+                    return apply_filters( 'wpcss_generate_key', $key );
+                }
 
-				function get_url( $key ) {
-					$url = home_url( '/' );
+                function get_url( $key ) {
+                    $url = home_url( '/' );
 
-					if ( $page_id = self::get_page_id() ) {
-						if ( get_option( 'permalink_structure' ) !== '' ) {
-							$url = trailingslashit( get_permalink( $page_id ) ) . $key;
-						} else {
-							$url = get_permalink( $page_id ) . '&wpcss_id=' . $key;
-						}
-					}
+                    if ( $page_id = self::get_page_id() ) {
+                        if ( get_option( 'permalink_structure' ) !== '' ) {
+                            $url = trailingslashit( get_permalink( $page_id ) ) . $key;
+                        } else {
+                            $url = get_permalink( $page_id ) . '&wpcss_id=' . $key;
+                        }
+                    }
 
-					return apply_filters( 'wpcss_get_url', $url );
-				}
+                    return apply_filters( 'wpcss_get_url', $url );
+                }
 
-				function sanitize_array( $array ) {
-					foreach ( $array as $key => &$value ) {
-						if ( is_array( $value ) ) {
-							$value = self::sanitize_array( $value );
-						} else {
-							$value = sanitize_text_field( $value );
-						}
-					}
+                function sanitize_array( $array ) {
+                    foreach ( $array as $key => &$value ) {
+                        if ( is_array( $value ) ) {
+                            $value = self::sanitize_array( $value );
+                        } else {
+                            $value = sanitize_text_field( $value );
+                        }
+                    }
 
-					return $array;
-				}
+                    return $array;
+                }
 
-				function is_special_cart_item( $cart_item ) {
-					return (bool) apply_filters( 'wpcss_is_special_cart_item', ( isset( $cart_item['woosb_parent_id'] ) || isset( $cart_item['wooco_parent_id'] ) || isset( $cart_item['woofs_parent_id'] ) || isset( $cart_item['woobt_parent_id'] ) ), $cart_item );
-				}
-			}
+                function is_special_cart_item( $cart_item ) {
+                    return (bool) apply_filters( 'wpcss_is_special_cart_item', ( isset( $cart_item['woosb_parent_id'] ) || isset( $cart_item['wooco_parent_id'] ) || isset( $cart_item['woofs_parent_id'] ) || isset( $cart_item['woobt_parent_id'] ) ), $cart_item );
+                }
+            }
 
-			return WPCleverWpcss::instance();
-		}
+            return WPCleverWpcss::instance();
+        }
 
-		return null;
-	}
+        return null;
+    }
 }
 
 if ( ! function_exists( 'wpcss_notice_wc' ) ) {
-	function wpcss_notice_wc() {
-		?>
+    function wpcss_notice_wc() {
+        ?>
         <div class="error">
             <p><strong>WPC Share Cart</strong> requires WooCommerce version 3.0 or greater.</p>
         </div>
-		<?php
-	}
+        <?php
+    }
 }

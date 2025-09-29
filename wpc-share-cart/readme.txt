@@ -3,8 +3,8 @@ Contributors: wpclever
 Donate link: https://wpclever.net
 Tags: woocommerce, wpc, share cart, cart link
 Tested up to: 6.8
-Version: 2.2.0
-Stable tag: 2.2.0
+Version: 2.2.1
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ WPC Share Cart is a simple but powerful tool that can help your customer share t
 
 == Description ==
 
-**WPC Share Cart for WooCommerce** is a plugin for saving, sharing, replacing, and restoring cart via an auto-generated link with other users or via social media. WPC Share Cart can be utilized for sharing products directly from any WooCommerce store or saving item lists as Wishlist or Saved for Later. This helps to reduce the time spent searching, grouping products together in order to buy.
+**WPC Share Cart for WooCommerce** is a plugin for saving, sharing, replacing, and restoring cart via an auto-generated link with other users or via social media. WPC Share Cart can be used for sharing products directly from any WooCommerce store or saving item lists as Wishlist or Saved for Later. This helps to reduce the time spent searching, grouping products together to buy.
 
 = Live demo =
 
@@ -22,9 +22,9 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 
 = Benefits =
 
-- Enable sharing cart between users who have the same interests & needs
-- Convert more visitors into customers & encourage the faster checkout
-- Increase the user experience & easy catalog sharing across multiple product lines
+- Enable sharing cart between users who have the same interests and needs
+- Convert more visitors into customers and encourage the faster checkout
+- Increase the user experience and easy catalog sharing across multiple product lines
 
 = Key Features =
 
@@ -61,10 +61,14 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 
 1. Please make sure that you installed WooCommerce
 2. Go to plugins in your dashboard and select "Add New"
-3. Search for "WPC Share Cart", Install & Activate it
+3. Search for "WPC Share Cart," Install & Activate it
 4. Go to WP-admin > WPClever > Share Cart to configure
 
 == Changelog ==
+
+= 2.2.1 =
+* Updated: Optimized the code
+* Fixed: Compatible with WP 6.8 & Woo 10.2
 
 = 2.2.0 =
 * Fixed: Minor CSS/JS issues in the backend
