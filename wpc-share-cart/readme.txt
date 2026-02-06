@@ -2,9 +2,9 @@
 Contributors: wpclever
 Donate link: https://wpclever.net
 Tags: woocommerce, wpc, share cart, cart link
-Tested up to: 6.8
-Version: 2.2.1
-Stable tag: 2.2.1
+Tested up to: 6.9
+Version: 2.2.3
+Stable tag: 2.2.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,20 +66,27 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 
 == Changelog ==
 
+= 2.2.3 =
+* Updated: Optimized the code
+* Updated: Compatible with WP 6.9 & Woo 10.4
+
+= 2.2.2 =
+* Added: Import/export settings
+
 = 2.2.1 =
 * Updated: Optimized the code
-* Fixed: Compatible with WP 6.8 & Woo 10.2
+* Updated: Compatible with WP 6.8 & Woo 10.2
 
 = 2.2.0 =
 * Fixed: Minor CSS/JS issues in the backend
-* Fixed: Compatible with WP 6.8 & Woo 10.0
+* Updated: Compatible with WP 6.8 & Woo 10.0
 
 = 2.1.9 =
 * Updated: Optimized the code
 
 = 2.1.8 =
 * Fixed: Minor CSS/JS issues in the backend
-* Fixed: Compatible with WP 6.8 & Woo 9.9
+* Updated: Compatible with WP 6.8 & Woo 9.9
 
 = 2.1.7 =
 * Added: Option to disable for unauthenticated users
@@ -89,18 +96,18 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 
 = 2.1.5 =
 * Added: Filter hook 'wpcss_add_to_cart_args'
-* Fixed: Compatible with WP 6.8 & Woo 9.8
+* Updated: Compatible with WP 6.8 & Woo 9.8
 
 = 2.1.4 =
 * Fixed: Show share cart button on the WC Cart Block
 
 = 2.1.3 =
 * Updated: Optimized the code
-* Fixed: Compatible with WP 6.7 & Woo 9.7
+* Updated: Compatible with WP 6.7 & Woo 9.7
 
 = 2.1.2 =
 * Updated: Optimized the code
-* Fixed: Compatible with WP 6.7 & Woo 9.5
+* Updated: Compatible with WP 6.7 & Woo 9.5
 
 = 2.1.1 =
 * Added: Shortcode [wpcss_btn]
@@ -113,24 +120,24 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 
 = 2.0.0 =
 * Fixed: Minor CSS/JS issues in the backend
-* Fixed: Compatible with WP 6.5 & Woo 9.1
+* Updated: Compatible with WP 6.5 & Woo 9.1
 
 = 1.3.0 =
 * Fixed: Minor CSS/JS issues in the backend
-* Fixed: Compatible with WP 6.5 & Woo 9.0
+* Updated: Compatible with WP 6.5 & Woo 9.0
 
 = 1.2.9 =
 * Updated: Optimized the code
-* Fixed: Compatible with WP 6.5 & Woo 8.8
+* Updated: Compatible with WP 6.5 & Woo 8.8
 
 = 1.2.8 =
-* Fixed: Compatible with WP 6.4 & Woo 8.4
+* Updated: Compatible with WP 6.4 & Woo 8.4
 
 = 1.2.7 =
 * Updated: Optimized the code
 
 = 1.2.6 =
-* Fixed: Compatible with WP 6.3 & Woo 8.0
+* Updated: Compatible with WP 6.3 & Woo 8.0
 
 = 1.2.5 =
 * Fixed: CSRF vulnerability

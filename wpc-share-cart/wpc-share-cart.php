@@ -3,29 +3,29 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.2.1
+Version: 2.2.3
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
 Domain Path: /languages/
 Requires Plugins: woocommerce
 Requires at least: 4.0
-Tested up to: 6.8
+Tested up to: 6.9
 WC requires at least: 3.0
-WC tested up to: 10.2
+WC tested up to: 10.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.2.1' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.2.3' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
 ! defined( 'WPCSS_DIR' ) && define( 'WPCSS_DIR', plugin_dir_path( __FILE__ ) );
 ! defined( 'WPCSS_SUPPORT' ) && define( 'WPCSS_SUPPORT', 'https://wpclever.net/support?utm_source=support&utm_medium=wpcss&utm_campaign=wporg' );
-! defined( 'WPCSS_REVIEWS' ) && define( 'WPCSS_REVIEWS', 'https://wordpress.org/support/plugin/wpc-share-cart/reviews/?filter=5' );
+! defined( 'WPCSS_REVIEWS' ) && define( 'WPCSS_REVIEWS', 'https://wordpress.org/support/plugin/wpc-share-cart/reviews/' );
 ! defined( 'WPCSS_CHANGELOG' ) && define( 'WPCSS_CHANGELOG', 'https://wordpress.org/plugins/wpc-share-cart/#developers' );
 ! defined( 'WPCSS_DISCUSSION' ) && define( 'WPCSS_DISCUSSION', 'https://wordpress.org/support/plugin/wpc-share-cart' );
 ! defined( 'WPC_URI' ) && define( 'WPC_URI', WPCSS_URI );
@@ -91,6 +91,11 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                     // footer
                     add_action( 'wp_footer', [ $this, 'footer' ] );
+
+                    // nonce check
+                    add_filter( 'wpcss_disable_nonce_check', function ( $check, $context ) {
+                        return apply_filters( 'wpcss_disable_security_check', $check, $context );
+                    }, 10, 2 );
                 }
 
                 function query_vars( $vars ) {
@@ -235,7 +240,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                         }
 
                         // Filter args before adding to the cart
-                        $args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item );
+                        $args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item, $cart_key );
 
                         $wc_cart->add_to_cart( ...$args );
                     }
@@ -479,10 +484,16 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                 function register_settings() {
                     // settings
-                    register_setting( 'wpcss_settings', 'wpcss_settings' );
+                    register_setting( 'wpcss_settings', 'wpcss_settings', [
+                            'type'              => 'array',
+                            'sanitize_callback' => [ $this, 'sanitize_array' ],
+                    ] );
 
                     // localization
-                    register_setting( 'wpcss_localization', 'wpcss_localization' );
+                    register_setting( 'wpcss_localization', 'wpcss_localization', [
+                            'type'              => 'array',
+                            'sanitize_callback' => [ $this, 'sanitize_array' ],
+                    ] );
                 }
 
                 function admin_menu() {
@@ -690,6 +701,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         <tr class="submit">
                                             <th colspan="2">
                                                 <?php settings_fields( 'wpcss_settings' ); ?><?php submit_button(); ?>
+                                                <a style="display: none;" class="wpclever_export"
+                                                   data-key="wpcss_settings"
+                                                   data-name="settings"
+                                                   href="#"><?php esc_html_e( 'import / export', 'wpc-share-cart' ); ?></a>
                                             </th>
                                         </tr>
                                     </table>
@@ -865,6 +880,10 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         <tr class="submit">
                                             <th colspan="2">
                                                 <?php settings_fields( 'wpcss_localization' ); ?><?php submit_button(); ?>
+                                                <a style="display: none;" class="wpclever_export"
+                                                   data-key="wpcss_localization"
+                                                   data-name="settings"
+                                                   href="#"><?php esc_html_e( 'import / export', 'wpc-share-cart' ); ?></a>
                                             </th>
                                         </tr>
                                     </table>
@@ -1104,7 +1123,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                 }
 
                 function ajax_share() {
-                    if ( ! apply_filters( 'wpcss_disable_security_check', false, 'share' ) ) {
+                    if ( ! apply_filters( 'wpcss_disable_nonce_check', false, 'share' ) ) {
                         if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nonce'] ), 'wpcss-security' ) ) {
                             die( 'Permissions check failed!' );
                         }
@@ -1126,7 +1145,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                         if ( ! empty( $cart ) ) {
                             $cart_data = [
-                                    'cart'     => $cart,
+                                    'cart'     => apply_filters( 'wpcss_cart_data', $cart ),
                                     'customer' => WC()->cart->get_customer(),
                                     'coupons'  => WC()->cart->get_applied_coupons(),
                                     'time'     => time(),
@@ -1134,6 +1153,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                             update_option( 'wpcss_cart_' . $key, $cart_data, false );
                             update_option( 'wpcss_hash_' . $hash, $key, false );
+
                             $url = self::get_url( $key );
                         }
                     }
@@ -1204,16 +1224,16 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                     return apply_filters( 'wpcss_get_url', $url );
                 }
 
-                function sanitize_array( $array ) {
-                    foreach ( $array as $key => &$value ) {
-                        if ( is_array( $value ) ) {
-                            $value = self::sanitize_array( $value );
+                public static function sanitize_array( $arr ) {
+                    foreach ( (array) $arr as $k => $v ) {
+                        if ( is_array( $v ) ) {
+                            $arr[ $k ] = self::sanitize_array( $v );
                         } else {
-                            $value = sanitize_text_field( $value );
+                            $arr[ $k ] = sanitize_post_field( 'post_content', $v, 0, 'db' );
                         }
                     }
 
-                    return $array;
+                    return $arr;
                 }
 
                 function is_special_cart_item( $cart_item ) {
