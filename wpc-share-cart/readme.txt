@@ -2,9 +2,9 @@
 Contributors: wpclever
 Donate link: https://wpclever.net
 Tags: woocommerce, wpc, share cart, cart link
-Tested up to: 6.9
-Version: 2.3.0
-Stable tag: 2.3.0
+Tested up to: 7.0
+Version: 2.3.1
+Stable tag: 2.3.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -65,6 +65,10 @@ Especially, when combined with [WPC Smart Quick View](https://wordpress.org/plug
 4. Go to WP-admin > WPClever > Share Cart to configure
 
 == Changelog ==
+
+= 2.3.1 =
+* Added: Share selected shipping method
+* Updated: Compatible with WP 7.0 & Woo 10.8
 
 = 2.3.0 =
 * Updated: Optimized the code for better performance

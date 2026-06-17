@@ -3,23 +3,23 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.3.0
+Version: 2.3.1
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
 Domain Path: /languages/
 Requires Plugins: woocommerce
-Requires at least: 4.0
-Tested up to: 6.9
+Requires at least: 5.9
+Tested up to: 7.0
 WC requires at least: 3.0
-WC tested up to: 10.7
+WC tested up to: 10.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.0' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.1' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -109,8 +109,6 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                 }
 
                 function init() {
-                    // load text-domain
-                    load_plugin_textdomain( 'wpc-share-cart', false, basename( WPCSS_DIR ) . '/languages/' );
 
                     // add page
                     $wpcss_page = get_page_by_path( 'share-cart', OBJECT );
@@ -249,6 +247,12 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                         $args = apply_filters( 'wpcss_add_to_cart_args', $args, $cart_item, $cart_key );
 
                         $wc_cart->add_to_cart( ...$args );
+                    }
+
+                    // Restore shipping method when restoring the full cart
+                    if ( $action === 'all' && self::get_setting( 'share_shipping', 'no' ) === 'yes' && ! empty( $saved_cart['shipping'] ) && WC()->session ) {
+                        $method_ids = array_column( $saved_cart['shipping'], 'id' );
+                        WC()->session->set( 'chosen_shipping_methods', $method_ids );
                     }
 
                     // Handle redirect if needed
@@ -420,6 +424,49 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                         <?php
                                     }
                                 } ?>
+                                <?php
+                                // Display shipping method and cart total as a table row above the actions
+                                if ( self::get_setting( 'share_shipping', 'no' ) === 'yes' && ( ! empty( $cart['shipping'] ) || ! empty( $cart['total'] ) ) ) {
+                                    $colspan = self::get_setting( 'add_selected', 'yes' ) === 'yes' ? 5 : 6;
+                                    ?>
+                                    <tr class="wpcss-summary-row">
+                                        <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
+                                            <td class="product-checkbox"></td>
+                                        <?php } ?>
+                                        <td colspan="<?php echo esc_attr( $colspan ); ?>" class="wpcss-summary-cell">
+                                            <?php if ( ! empty( $cart['shipping'] ) ) { ?>
+                                                <span class="wpcss-shipping-info">
+                                                    <span class="wpcss-shipping-label"><?php echo esc_html( self::localization( 'shipping_method', esc_html__( 'Shipping method:', 'wpc-share-cart' ) ) ); ?></span>
+                                                    <span class="wpcss-shipping-value"><?php
+                                                        $shipping_parts = [];
+
+                                                        foreach ( $cart['shipping'] as $shipping_item ) {
+                                                            // Format shipping label and cost to match WooCommerce cart display style
+                                                            $part = esc_html( $shipping_item['label'] );
+
+                                                            // Show cost only when greater than 0; free methods display label only
+                                                            if ( isset( $shipping_item['cost'] ) && (float) $shipping_item['cost'] > 0 ) {
+                                                                $part .= ': ' . wp_kses_post( wc_price( $shipping_item['cost'] ) );
+                                                            }
+
+                                                            $shipping_parts[] = $part;
+                                                        }
+
+                                                        echo wp_kses_post( implode( ', ', $shipping_parts ) );
+                                                    ?></span>
+                                                </span>
+                                            <?php } ?>
+                                            <?php if ( ! empty( $cart['total'] ) ) { ?>
+                                                <span class="wpcss-cart-total">
+                                                    <span class="wpcss-cart-total-label"><?php echo esc_html( self::localization( 'cart_total', esc_html__( 'Total:', 'wpc-share-cart' ) ) ); ?></span>
+                                                    <span class="wpcss-cart-total-value"><?php echo wp_kses_post( wc_price( $cart['total'] ) ); ?></span>
+                                                </span>
+                                            <?php } ?>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                }
+                                ?>
                                 <tr>
                                     <?php if ( self::get_setting( 'add_selected', 'yes' ) === 'yes' ) { ?>
                                         <td class="product-checkbox">
@@ -580,16 +627,17 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                     flush_rewrite_rules();
                                 }
 
-                                $need_login   = self::get_setting( 'need_login', 'no' );
-                                $link         = self::get_setting( 'link', 'yes' );
-                                $add_selected = self::get_setting( 'add_selected', 'yes' );
-                                $add_all      = self::get_setting( 'add_all', 'yes' );
-                                $keep_data    = self::get_setting( 'keep_data', 'yes' );
-                                $redirect     = self::get_setting( 'redirect', 'yes' );
-                                $page_share   = self::get_setting( 'page_share', 'yes' );
-                                $page_icon    = self::get_setting( 'page_icon', 'yes' );
-                                $page_copy    = self::get_setting( 'page_copy', 'yes' );
-                                $page_items   = (array) self::get_setting( 'page_items', [] );
+                                $need_login      = self::get_setting( 'need_login', 'no' );
+                                $link            = self::get_setting( 'link', 'yes' );
+                                $add_selected    = self::get_setting( 'add_selected', 'yes' );
+                                $add_all         = self::get_setting( 'add_all', 'yes' );
+                                $keep_data       = self::get_setting( 'keep_data', 'yes' );
+                                $share_shipping  = self::get_setting( 'share_shipping', 'no' );
+                                $redirect        = self::get_setting( 'redirect', 'yes' );
+                                $page_share      = self::get_setting( 'page_share', 'yes' );
+                                $page_icon       = self::get_setting( 'page_icon', 'yes' );
+                                $page_copy       = self::get_setting( 'page_copy', 'yes' );
+                                $page_items      = (array) self::get_setting( 'page_items', [] );
                                 ?>
                                 <form method="post" action="options.php">
                                     <table class="form-table">
@@ -661,6 +709,16 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                         <option value="no" <?php selected( $keep_data, 'no' ); ?>><?php esc_html_e( 'No', 'wpc-share-cart' ); ?></option>
                                                     </select> </label>
                                                 <span class="description"><?php esc_html_e( 'Keep the product data at the sharing moment. If not, when adding selected products or restoring the cart, products will be added to the cart with the current data.', 'wpc-share-cart' ); ?></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Share shipping method', 'wpc-share-cart' ); ?></th>
+                                            <td>
+                                                <label> <select name="wpcss_settings[share_shipping]">
+                                                        <option value="yes" <?php selected( $share_shipping, 'yes' ); ?>><?php esc_html_e( 'Yes', 'wpc-share-cart' ); ?></option>
+                                                        <option value="no" <?php selected( $share_shipping, 'no' ); ?>><?php esc_html_e( 'No', 'wpc-share-cart' ); ?></option>
+                                                    </select> </label>
+                                                <span class="description"><?php esc_html_e( 'Save and share the chosen shipping method with the cart. When restoring the cart, the shipping method will be applied automatically.', 'wpc-share-cart' ); ?></span>
                                             </td>
                                         </tr>
                                         <tr>
@@ -851,6 +909,28 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                                            name="wpcss_localization[note]"
                                                            value="<?php echo esc_attr( self::localization( 'note' ) ); ?>"
                                                            placeholder="<?php esc_attr_e( 'Note:', 'wpc-share-cart' ); ?>"/>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Shipping method', 'wpc-share-cart' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[shipping_method]"
+                                                           value="<?php echo esc_attr( self::localization( 'shipping_method' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Shipping method:', 'wpc-share-cart' ); ?>"/>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Cart total', 'wpc-share-cart' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="text" class="regular-text"
+                                                           name="wpcss_localization[cart_total]"
+                                                           value="<?php echo esc_attr( self::localization( 'cart_total' ) ); ?>"
+                                                           placeholder="<?php esc_attr_e( 'Total:', 'wpc-share-cart' ); ?>"/>
                                                 </label>
                                             </td>
                                         </tr>
@@ -1172,6 +1252,18 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                     $hash = sanitize_text_field( wp_unslash( $_POST['hash'] ?? '' ) );
 
                     if ( $key = get_option( 'wpcss_hash_' . $hash ) ) {
+                        // Refresh shipping and total in the saved data when share_shipping is enabled,
+                        // so that any shipping method change is reflected in the existing share link
+                        if ( self::get_setting( 'share_shipping', 'no' ) === 'yes' ) {
+                            $saved = get_option( 'wpcss_cart_' . $key, [] );
+
+                            if ( ! empty( $saved ) ) {
+                                $saved['shipping'] = self::get_chosen_shipping_methods();
+                                $saved['total']    = WC()->cart->get_total( 'edit' );
+                                update_option( 'wpcss_cart_' . $key, $saved, false );
+                            }
+                        }
+
                         $url = self::get_url( $key );
                     } else {
                         $key  = self::generate_key();
@@ -1182,6 +1274,8 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                                     'cart'     => apply_filters( 'wpcss_cart_data', $cart ),
                                     'customer' => WC()->cart->get_customer(),
                                     'coupons'  => WC()->cart->get_applied_coupons(),
+                                    'shipping' => self::get_setting( 'share_shipping', 'no' ) === 'yes' ? self::get_chosen_shipping_methods() : [],
+                                    'total'    => self::get_setting( 'share_shipping', 'no' ) === 'yes' ? WC()->cart->get_total( 'edit' ) : 0,
                                     'time'     => time(),
                             ];
 
@@ -1280,6 +1374,64 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                     return $arr;
                 }
+
+                public static function get_chosen_shipping_methods() {
+                    // Read chosen shipping methods from WC session and enrich with label and cost
+                    if ( ! WC()->session ) {
+                        return [];
+                    }
+
+                    $chosen = WC()->session->get( 'chosen_shipping_methods', [] );
+
+                    if ( empty( $chosen ) ) {
+                        return [];
+                    }
+
+                    // Force shipping calculation so package rates (including cost) are populated
+                    WC()->cart->calculate_shipping();
+                    $packages = WC()->shipping()->get_packages();
+                    $result   = [];
+
+                    foreach ( $chosen as $package_index => $method_id ) {
+                        $label = '';
+                        $cost  = 0;
+
+                        // Primary: look up the rate in calculated shipping packages
+                        if ( isset( $packages[ $package_index ]['rates'][ $method_id ] ) ) {
+                            $rate  = $packages[ $package_index ]['rates'][ $method_id ];
+                            $label = $rate->get_label();
+                            $cost  = $rate->get_cost();
+                        } else {
+                            // Fallback: parse method_id (e.g. "flat_rate:2") and load the
+                            // shipping method instance directly from the database via WC_Shipping_Zones.
+                            // This works even when packages have not been calculated yet (AJAX context).
+                            $parts       = explode( ':', $method_id, 2 );
+                            $instance_id = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
+
+                            if ( $instance_id ) {
+                                $shipping_method = WC_Shipping_Zones::get_shipping_method( $instance_id );
+
+                                if ( $shipping_method ) {
+                                    $label = $shipping_method->get_title();
+                                }
+                            }
+
+                            // Last resort: convert the method type slug to a readable string
+                            if ( empty( $label ) ) {
+                                $label = ucwords( str_replace( [ '_', '-' ], ' ', $parts[0] ) );
+                            }
+                        }
+
+                        $result[] = [
+                                'id'    => $method_id,
+                                'label' => $label,
+                                'cost'  => $cost,
+                        ];
+                    }
+
+                    return apply_filters( 'wpcss_chosen_shipping_methods', $result );
+                }
+
 
                 function is_special_cart_item( $cart_item ) {
                     return (bool) apply_filters( 'wpcss_is_special_cart_item', ( isset( $cart_item['woosb_parent_id'] ) || isset( $cart_item['wooco_parent_id'] ) || isset( $cart_item['woofs_parent_id'] ) || isset( $cart_item['woobt_parent_id'] ) ), $cart_item );

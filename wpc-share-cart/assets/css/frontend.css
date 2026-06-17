@@ -167,3 +167,35 @@ body.rtl .wpcss-share-links .wpcss-share-label, body.rtl .wpcss-share-links a {
 .wpcss-share-mail .wpcss-icon:before {
     content: '\e913';
 }
+
+
+.wpcss-summary-cell {
+    text-align: right !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+}
+
+.wpcss-shipping-info {
+    display: block;
+}
+
+.wpcss-shipping-label {
+    font-weight: 700;
+}
+
+.wpcss-shipping-value {
+    font-weight: 400;
+}
+
+.wpcss-cart-total {
+    display: block;
+    margin-top: 4px;
+}
+
+.wpcss-cart-total-label {
+    font-weight: 700;
+}
+
+.wpcss-cart-total-value {
+    font-weight: 700;
+}
