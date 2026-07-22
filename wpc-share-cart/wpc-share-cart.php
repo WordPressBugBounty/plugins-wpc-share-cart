@@ -3,7 +3,7 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.3.1
+Version: 2.3.2
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
@@ -12,14 +12,14 @@ Requires Plugins: woocommerce
 Requires at least: 5.9
 Tested up to: 7.0
 WC requires at least: 3.0
-WC tested up to: 10.8
+WC tested up to: 10.9
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.1' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.2' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
@@ -177,7 +177,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                     }
 
                     // Cache frequently accessed values
-                    $security = sanitize_key( wp_unslash( $_POST['wpcss-security'] ) );
+                    $security = sanitize_key( wp_unslash( $_POST['wpcss-security'] ?? '' ) );
 
                     if ( ! wp_verify_nonce( $security, 'wpcss_add_products' ) ) {
                         wp_die( 'Permissions check failed.' );
@@ -185,7 +185,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
 
                     // Cache settings to avoid multiple database calls
                     $keep_data = self::get_setting( 'keep_data', 'yes' ) === 'yes';
-                    $cart_key  = 'cart_' . sanitize_key( wp_unslash( $_POST['wpcss-key'] ) );
+                    $cart_key  = 'cart_' . sanitize_key( wp_unslash( $_POST['wpcss-key'] ?? '' ) );
 
                     // Get saved cart data
                     $saved_cart = self::get_setting( $cart_key );
@@ -195,7 +195,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                     }
 
                     $saved_cart_items = $saved_cart['cart'];
-                    $action           = sanitize_key( wp_unslash( $_POST['wpcss-action'] ) );
+                    $action           = sanitize_key( wp_unslash( $_POST['wpcss-action'] ?? '' ) );
                     $wc_cart          = WC()->cart;
 
                     // Prepare cart items based on action
@@ -208,7 +208,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                         }
 
                         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via sanitize_array() below
-                        $selected_products = self::sanitize_array( wp_unslash( $_POST['wpcss-products'] ) );
+                        $selected_products = self::sanitize_array( wp_unslash( $_POST['wpcss-products'] ?? '' ) );
                         // Filter only existing products
                         $items_to_process = array_intersect_key(
                                 $saved_cart_items,
@@ -591,7 +591,7 @@ if ( ! function_exists( 'wpcss_init' ) ) {
                             </div>
                         </div>
                         <h2></h2>
-                        <?php if ( isset( $_GET['settings-updated'] ) && sanitize_key( wp_unslash( $_GET['settings-updated'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display, nonce handled by WordPress settings API ?>
+                        <?php if ( isset( $_GET['settings-updated'] ) && sanitize_key( wp_unslash( $_GET['settings-updated'] ?? '' ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display, nonce handled by WordPress settings API ?>
                             <div class="notice notice-success is-dismissible">
                                 <p><?php esc_html_e( 'Settings updated.', 'wpc-share-cart' ); ?></p>
                             </div>
