@@ -3,28 +3,27 @@
 Plugin Name: WPC Share Cart for WooCommerce
 Plugin URI: https://wpclever.net/
 Description: WPC Share Cart is a simple but powerful tool that can help your customer share their cart.
-Version: 2.3.2
 Author: WPClever
 Author URI: https://wpclever.net
 Text Domain: wpc-share-cart
 Domain Path: /languages/
 Requires Plugins: woocommerce
+Version: 2.3.3
 Requires at least: 5.9
-Tested up to: 7.0
 WC requires at least: 3.0
-WC tested up to: 10.9
+WC tested up to: 11.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 */
 
 defined( 'ABSPATH' ) || exit;
 
-! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.2' );
+! defined( 'WPCSS_VERSION' ) && define( 'WPCSS_VERSION', '2.3.3' );
 ! defined( 'WPCSS_LITE' ) && define( 'WPCSS_LITE', __FILE__ );
 ! defined( 'WPCSS_FILE' ) && define( 'WPCSS_FILE', __FILE__ );
 ! defined( 'WPCSS_URI' ) && define( 'WPCSS_URI', plugin_dir_url( __FILE__ ) );
 ! defined( 'WPCSS_DIR' ) && define( 'WPCSS_DIR', plugin_dir_path( __FILE__ ) );
-! defined( 'WPCSS_SUPPORT' ) && define( 'WPCSS_SUPPORT', 'https://wpclever.net/support?utm_source=support&utm_medium=wpcss&utm_campaign=wporg' );
+! defined( 'WPCSS_SUPPORT' ) && define( 'WPCSS_SUPPORT', 'https://wpclever.net/support/?utm_source=support&utm_medium=wpcss&utm_campaign=wporg' );
 ! defined( 'WPCSS_REVIEWS' ) && define( 'WPCSS_REVIEWS', 'https://wordpress.org/support/plugin/wpc-share-cart/reviews/' );
 ! defined( 'WPCSS_CHANGELOG' ) && define( 'WPCSS_CHANGELOG', 'https://wordpress.org/plugins/wpc-share-cart/#developers' );
 ! defined( 'WPCSS_DISCUSSION' ) && define( 'WPCSS_DISCUSSION', 'https://wordpress.org/support/plugin/wpc-share-cart' );
